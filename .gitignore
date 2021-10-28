@@ -28,6 +28,7 @@ ltmain.sh
 missing
 stamp-h1
 test-driver
+m4
 
 # cmake
 CMakeCache.txt
