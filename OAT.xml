@@ -51,8 +51,6 @@
             <filefilter name="defaultFilter" desc="Files not to check">
                 <filteritem type="filepath" name="fuzz/corpus/h2spec/*" desc="These are binary files for fuzz test."/>
                 <filteritem type="filepath" name="fuzz/corpus/nghttp/*" desc="These are binary files for fuzz test."/>
-                <filteritem type="filepath" name="m4/*" desc="These are in .gitignore."/>
-                <filteritem type="filepath" name="doc/sources/contribute.rst" desc="This is in .gitignore."/>
                 <filteritem type="filepath" name="doc/_themes/sphinx_rtd_theme/static/fonts/*" desc="These fonnts files for document."/>
                 <filteritem type="filename" name="*.pem" desc="These ca files for ssl certification test."/>
             </filefilter>
