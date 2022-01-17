@@ -57,7 +57,7 @@ config("nghttp2_lib_config") {
     ".",
     "./includes",
   ]
-  defines = ["HAVE_ARPA_INET_H=1"]
+  defines = [ "HAVE_ARPA_INET_H=1" ]
 }
 
 if (defined(ohos_lite)) {
@@ -67,24 +67,24 @@ if (defined(ohos_lite)) {
   lite_library("nghttp2_lib_static") {
     target_type = "static_library"
     sources = nghttp2_lib_sources
-    public_configs = [":nghttp2_lib_config"]
+    public_configs = [ ":nghttp2_lib_config" ]
     output_name = "nghttp2"
   }
 
   lite_library("nghttp2_lib_shared") {
     target_type = "shared_library"
     sources = nghttp2_lib_sources
-    public_configs = [":nghttp2_lib_config"]
+    public_configs = [ ":nghttp2_lib_config" ]
     output_name = "nghttp2"
   }
 
   ndk_lib("nghttp2_lib_ndk") {
     if (ohos_kernel_type == "liteos_m") {
       lib_extension = ".a"
-      deps = [":nghttp2_lib_static"]
+      deps = [ ":nghttp2_lib_static" ]
     } else {
       lib_extension = ".so"
-      deps = [":nghttp2_lib_shared"]
+      deps = [ ":nghttp2_lib_shared" ]
     }
     head_files = [
       "//third_party/nghttp2/lib",
@@ -95,9 +95,7 @@ if (defined(ohos_lite)) {
   import("//build/ohos.gni")
 
   ohos_static_library("nghttp2") {
-    include_dirs = [
-      "includes",
-    ]
+    include_dirs = [ "includes" ]
     defines = []
     if (is_linux || is_mac || is_ohos) {
       defines += [
