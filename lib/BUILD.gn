@@ -106,4 +106,17 @@ if (defined(ohos_lite)) {
     }
     sources = nghttp2_lib_sources
   }
+
+  ohos_shared_library("libnghttp2_shared") {
+    include_dirs = [ "includes" ]
+    license_file = "//third_party/nghttp2/COPYING"
+    defines = []
+    if (is_linux || is_mac || is_ohos) {
+      defines += [
+        "HAVE_ARPA_INET_H=1",
+        "HAVE_NETINET_IN_H=1",
+      ]
+    }
+    sources = nghttp2_lib_sources
+  }
 }
