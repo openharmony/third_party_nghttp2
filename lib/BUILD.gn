@@ -36,7 +36,6 @@ nghttp2_lib_sources = [
   "nghttp2_hd_huffman_data.c",
   "nghttp2_helper.c",
   "nghttp2_http.c",
-  "nghttp2_ksl.c",
   "nghttp2_map.c",
   "nghttp2_mem.c",
   "nghttp2_npn.c",
