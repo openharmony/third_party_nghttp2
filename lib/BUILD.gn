@@ -116,6 +116,9 @@ if (defined(ohos_lite)) {
         "HAVE_ARPA_INET_H=1",
         "HAVE_NETINET_IN_H=1",
       ]
+      if ((is_linux || is_ohos) && product_name != "ohos-sdk") {
+        version_script = "libnghttp2_shared.map"
+      }
     }
     sources = nghttp2_lib_sources
 
