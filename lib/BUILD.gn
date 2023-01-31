@@ -118,6 +118,9 @@ if (defined(ohos_lite)) {
       ]
     }
     sources = nghttp2_lib_sources
+    if (product_name != "ohos-sdk") {
+      version_script = "libnghttp2_shared.map"
+    }
 
     subsystem_name = "thirdparty"
     part_name = "thirdparty_nghttp2"
