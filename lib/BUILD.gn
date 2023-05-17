@@ -122,6 +122,7 @@ if (defined(ohos_lite)) {
     }
 
     subsystem_name = "thirdparty"
+    innerapi_tags = [ "platformsdk_indirect" ]
     part_name = "thirdparty_nghttp2"
   }
 }
