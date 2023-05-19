@@ -120,7 +120,10 @@ if (defined(ohos_lite)) {
     if (product_name != "ohos-sdk") {
       version_script = "libnghttp2_shared.map"
     }
-
+    install_images = [
+      "system",
+      "updater",
+    ]
     subsystem_name = "thirdparty"
     part_name = "thirdparty_nghttp2"
   }
