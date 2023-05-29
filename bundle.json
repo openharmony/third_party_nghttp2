@@ -14,8 +14,8 @@
         "en": "README.rst"
     },
     "component": {
-        "name": "thirdparty_nghttp2",
-        "subsystem": "",
+        "name": "nghttp2",
+        "subsystem": "thirdparty",
         "syscap": [],
         "features": [],
         "adapted_system_type": [],
