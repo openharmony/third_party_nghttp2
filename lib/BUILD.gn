@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2022 Huawei Device Co., Ltd. All rights reserved.
+# Copyright (c) 2021-2023 Huawei Device Co., Ltd. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
 # are permitted provided that the following conditions are met:
@@ -125,6 +125,6 @@ if (defined(ohos_lite)) {
       "updater",
     ]
     subsystem_name = "thirdparty"
-    part_name = "thirdparty_nghttp2"
+    part_name = "nghttp2"
   }
 }
