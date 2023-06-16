@@ -125,6 +125,7 @@ if (defined(ohos_lite)) {
       "updater",
     ]
     subsystem_name = "thirdparty"
+    innerapi_tags = [ "platformsdk" ]
     part_name = "nghttp2"
   }
 }
