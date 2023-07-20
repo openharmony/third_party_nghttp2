@@ -152,8 +152,6 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_to_token68", shrpx::test_util_to_token68) ||
       !CU_add_test(pSuite, "util_percent_encode_token",
                    shrpx::test_util_percent_encode_token) ||
-      !CU_add_test(pSuite, "util_percent_encode_path",
-                   shrpx::test_util_percent_encode_path) ||
       !CU_add_test(pSuite, "util_percent_decode",
                    shrpx::test_util_percent_decode) ||
       !CU_add_test(pSuite, "util_quote_string",
@@ -202,6 +200,7 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_split_hostport",
                    shrpx::test_util_split_hostport) ||
       !CU_add_test(pSuite, "util_split_str", shrpx::test_util_split_str) ||
+      !CU_add_test(pSuite, "util_rstrip", shrpx::test_util_rstrip) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "buffer_write", nghttp2::test_buffer_write) ||
       !CU_add_test(pSuite, "pool_recycle", nghttp2::test_pool_recycle) ||
