@@ -345,13 +345,26 @@ constexpr llhttp_settings_t htp_hooks = {
     nullptr,             // llhttp_cb      on_message_begin;
     nullptr,             // llhttp_data_cb on_url;
     nullptr,             // llhttp_data_cb on_status;
+    nullptr,             // llhttp_data_cb on_method;
+    nullptr,             // llhttp_data_cb on_version;
     nullptr,             // llhttp_data_cb on_header_field;
     nullptr,             // llhttp_data_cb on_header_value;
+    nullptr,             // llhttp_data_cb on_chunk_extension_name;
+    nullptr,             // llhttp_data_cb on_chunk_extension_value;
     htp_hdrs_completecb, // llhttp_cb      on_headers_complete;
     nullptr,             // llhttp_data_cb on_body;
     nullptr,             // llhttp_cb      on_message_complete;
-    nullptr,             // llhttp_cb      on_chunk_header
-    nullptr,             // llhttp_cb      on_chunk_complete
+    nullptr,             // llhttp_cb      on_url_complete;
+    nullptr,             // llhttp_cb      on_status_complete;
+    nullptr,             // llhttp_cb      on_method_complete;
+    nullptr,             // llhttp_cb      on_version_complete;
+    nullptr,             // llhttp_cb      on_header_field_complete;
+    nullptr,             // llhttp_cb      on_header_value_complete;
+    nullptr,             // llhttp_cb      on_chunk_extension_name_complete;
+    nullptr,             // llhttp_cb      on_chunk_extension_value_complete;
+    nullptr,             // llhttp_cb      on_chunk_header;
+    nullptr,             // llhttp_cb      on_chunk_complete;
+    nullptr,             // llhttp_cb      on_reset;
 };
 } // namespace
 
@@ -1693,13 +1706,16 @@ int Http2Session::connection_made() {
     return -1;
   }
 
-  std::array<nghttp2_settings_entry, 4> entry;
-  size_t nentry = 2;
+  std::array<nghttp2_settings_entry, 5> entry;
+  size_t nentry = 3;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = http2conf.downstream.max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   entry[1].value = http2conf.downstream.window_size;
+
+  entry[2].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  entry[2].value = 1;
 
   if (http2conf.no_server_push || config->http2_proxy) {
     entry[nentry].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
