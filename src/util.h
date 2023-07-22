@@ -106,9 +106,6 @@ std::string percent_encode(const unsigned char *target, size_t len);
 
 std::string percent_encode(const std::string &target);
 
-// percent-encode path component of URI |s|.
-std::string percent_encode_path(const std::string &s);
-
 template <typename InputIt>
 std::string percent_decode(InputIt first, InputIt last) {
   std::string result;
@@ -875,8 +872,28 @@ OutputIt random_alpha_digit(OutputIt first, OutputIt last, Generator &gen) {
 // Fills random bytes to the range [|first|, |last|).
 template <typename OutputIt, typename Generator>
 void random_bytes(OutputIt first, OutputIt last, Generator &gen) {
-  std::uniform_int_distribution<> dis(0, 255);
+  std::uniform_int_distribution<uint8_t> dis;
   std::generate(first, last, [&dis, &gen]() { return dis(gen); });
+}
+
+// Shuffles the range [|first|, |last|] by calling swap function |fun|
+// for each pair.  |fun| takes 2 RandomIt iterators.  If |fun| is
+// noop, no modification is made.
+template <typename RandomIt, typename Generator, typename SwapFun>
+void shuffle(RandomIt first, RandomIt last, Generator &&gen, SwapFun fun) {
+  auto len = std::distance(first, last);
+  if (len < 2) {
+    return;
+  }
+
+  for (unsigned int i = 0; i < static_cast<unsigned int>(len - 1); ++i) {
+    auto dis = std::uniform_int_distribution<unsigned int>(i, len - 1);
+    auto j = dis(gen);
+    if (i == j) {
+      continue;
+    }
+    fun(first + i, first + j);
+  }
 }
 
 template <typename OutputIterator, typename CharT, size_t N>
@@ -915,6 +932,12 @@ std::mt19937 make_mt19937();
 // daemonize calls daemon(3).  If __APPLE__ is defined, it implements
 // daemon() using fork().
 int daemonize(int nochdir, int noclose);
+
+// Returns |s| from which trailing white spaces (SPC or HTAB) are
+// removed.  If any white spaces are removed, new string is allocated
+// by |balloc| and returned.  Otherwise, the copy of |s| is returned
+// without allocation.
+StringRef rstrip(BlockAllocator &balloc, const StringRef &s);
 
 #ifdef ENABLE_HTTP3
 int msghdr_get_local_addr(Address &dest, msghdr *msg, int family);
