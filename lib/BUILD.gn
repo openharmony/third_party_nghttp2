@@ -118,13 +118,15 @@ if (defined(ohos_lite)) {
       ]
     }
     sources = nghttp2_lib_sources
-    if (product_name != "ohos-sdk") {
-      version_script = "libnghttp2_shared.map"
+    if (target_os != "ios") {
+      if (product_name != "ohos-sdk") {
+        version_script = "libnghttp2_shared.map"
+      }
+      install_images = [
+        "system",
+        "updater",
+      ]
     }
-    install_images = [
-      "system",
-      "updater",
-    ]
     subsystem_name = "thirdparty"
     innerapi_tags = [ "platformsdk" ]
     part_name = "nghttp2"
