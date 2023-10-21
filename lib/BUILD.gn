@@ -50,6 +50,7 @@ nghttp2_lib_sources = [
   "nghttp2_stream.c",
   "nghttp2_submit.c",
   "nghttp2_version.c",
+  "sfparse.c",
 ]
 
 config("nghttp2_lib_config") {
