@@ -81,7 +81,8 @@ jobs:
       if: matrix.buildtool == 'autotools'
       run: |
         autoreconf -i
-        ./configure --enable-werror --with-mruby
+        ./configure --enable-werror --with-mruby \
+        CFLAGS="-g -O2 -D_WIN32_WINNT=0x0600"
     - name: Configure cmake
       if: matrix.buildtool == 'cmake'
       run: |
