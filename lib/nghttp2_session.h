@@ -39,6 +39,7 @@
 #include "nghttp2_buf.h"
 #include "nghttp2_callbacks.h"
 #include "nghttp2_mem.h"
+#include "nghttp2_ratelim.h"
 
 /* The global variable for tests where we want to disable strict
    preface handling. */
@@ -101,6 +102,10 @@ typedef struct {
 
 /* The default value of maximum number of concurrent streams. */
 #define NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS 0xffffffffu
+
+/* The default values for stream reset rate limiter. */
+#define NGHTTP2_DEFAULT_STREAM_RESET_BURST 1000
+#define NGHTTP2_DEFAULT_STREAM_RESET_RATE 33
 
 /* Internal state when receiving incoming frame */
 typedef enum {
@@ -176,7 +181,9 @@ typedef enum {
   /* Flag means GOAWAY was sent */
   NGHTTP2_GOAWAY_SENT = 0x4,
   /* Flag means GOAWAY was received */
-  NGHTTP2_GOAWAY_RECV = 0x8
+  NGHTTP2_GOAWAY_RECV = 0x8,
+  /* Flag means GOAWAY has been submitted at least once */
+  NGHTTP2_GOAWAY_SUBMITTED = 0x10
 } nghttp2_goaway_flag;
 
 /* nghttp2_inflight_settings stores the SETTINGS entries which local
@@ -227,6 +234,9 @@ struct nghttp2_session {
   /* Queue of In-flight SETTINGS values.  SETTINGS bearing ACK is not
      considered as in-flight. */
   nghttp2_inflight_settings *inflight_settings_head;
+  /* Stream reset rate limiter.  If receiving excessive amount of
+     stream resets, GOAWAY will be sent. */
+  nghttp2_ratelim stream_reset_ratelim;  
   /* The number of outgoing streams. This will be capped by
      remote_settings.max_concurrent_streams. */
   size_t num_outgoing_streams;
