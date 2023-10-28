@@ -1,4 +1,4 @@
-1.43.0 {
+1.55.0 {
     global:
         _fini;
         huff_decode_table;
@@ -374,6 +374,10 @@
         nghttp2_session_get_stream_local_window_size;
         nghttp2_session_get_remote_settings;
         nghttp2_session_get_remote_window_size;
+        nghttp2_ratelim_init;
+        nghttp2_time_now_sec;
+        nghttp2_ratelim_update;
+        nghttp2_ratelim_drain;
     local:
         *;
 };
