@@ -40,6 +40,7 @@
 #include "nghttp2_npn_test.h"
 #include "nghttp2_helper_test.h"
 #include "nghttp2_buf_test.h"
+#include "nghttp2_ratelim_test.h"
 
 extern int nghttp2_enable_strict_preface;
 
@@ -329,6 +330,8 @@ int main() {
                    test_nghttp2_session_no_closed_streams) ||
       !CU_add_test(pSuite, "session_set_stream_user_data",
                    test_nghttp2_session_set_stream_user_data) ||
+      !CU_add_test(pSuite, "session_stream_reset_ratelim",
+                   test_nghttp2_session_stream_reset_ratelim) ||                   
       !CU_add_test(pSuite, "http_mandatory_headers",
                    test_nghttp2_http_mandatory_headers) ||
       !CU_add_test(pSuite, "http_content_length",
@@ -425,7 +428,9 @@ int main() {
       !CU_add_test(pSuite, "bufs_advance", test_nghttp2_bufs_advance) ||
       !CU_add_test(pSuite, "bufs_next_present",
                    test_nghttp2_bufs_next_present) ||
-      !CU_add_test(pSuite, "bufs_realloc", test_nghttp2_bufs_realloc)) {
+      !CU_add_test(pSuite, "bufs_realloc", test_nghttp2_bufs_realloc) ||
+      !CU_add_test(pSuite, "ratelim_update", test_nghttp2_ratelim_update) ||
+      !CU_add_test(pSuite, "ratelim_drain", test_nghttp2_ratelim_drain)) {    
     CU_cleanup_registry();
     return (int)CU_get_error();
   }

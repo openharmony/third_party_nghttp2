@@ -126,3 +126,10 @@ void nghttp2_option_set_max_settings(nghttp2_option *option, size_t val) {
   option->opt_set_mask |= NGHTTP2_OPT_MAX_SETTINGS;
   option->max_settings = val;
 }
+
+void nghttp2_option_set_stream_reset_rate_limit(nghttp2_option *option,
+                                                uint64_t burst, uint64_t rate) {
+  option->opt_set_mask |= NGHTTP2_OPT_STREAM_RESET_RATE_LIMIT;
+  option->stream_reset_burst = burst;
+  option->stream_reset_rate = rate;
+}
