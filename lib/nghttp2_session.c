@@ -36,6 +36,7 @@
 #include "nghttp2_option.h"
 #include "nghttp2_http.h"
 #include "nghttp2_pq.h"
+#include "nghttp2_time.h"
 #include "nghttp2_debug.h"
 
 /*
@@ -443,6 +444,10 @@ static int session_new(nghttp2_session **session_ptr,
       NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS;
   (*session_ptr)->pending_enable_push = 1;
 
+  nghttp2_ratelim_init(&(*session_ptr)->stream_reset_ratelim,
+                       NGHTTP2_DEFAULT_STREAM_RESET_BURST,
+                       NGHTTP2_DEFAULT_STREAM_RESET_RATE);
+
   if (server) {
     (*session_ptr)->server = 1;
   }
@@ -526,6 +531,12 @@ static int session_new(nghttp2_session **session_ptr,
     if ((option->opt_set_mask & NGHTTP2_OPT_MAX_SETTINGS) &&
         option->max_settings) {
       (*session_ptr)->max_settings = option->max_settings;
+    }
+
+    if (option->opt_set_mask & NGHTTP2_OPT_STREAM_RESET_RATE_LIMIT) {
+      nghttp2_ratelim_init(&(*session_ptr)->stream_reset_ratelim,
+                           option->stream_reset_burst,
+                           option->stream_reset_rate);
     }
   }
 
@@ -4153,6 +4164,23 @@ static int session_process_priority_frame(nghttp2_session *session) {
   return nghttp2_session_on_priority_received(session, frame);
 }
 
+static int session_update_stream_reset_ratelim(nghttp2_session *session) {
+  if (!session->server || (session->goaway_flags & NGHTTP2_GOAWAY_SUBMITTED)) {
+    return 0;
+  }
+
+  nghttp2_ratelim_update(&session->stream_reset_ratelim,
+                         nghttp2_time_now_sec());
+
+  if (nghttp2_ratelim_drain(&session->stream_reset_ratelim, 1) == 0) {
+    return 0;
+  }
+
+  return nghttp2_session_add_goaway(session, session->last_recv_stream_id,
+                                    NGHTTP2_INTERNAL_ERROR, NULL, 0,
+                                    NGHTTP2_GOAWAY_AUX_NONE);
+}
+
 int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
                                            nghttp2_frame *frame) {
   int rv;
@@ -4182,7 +4210,8 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
   if (nghttp2_is_fatal(rv)) {
     return rv;
   }
-  return 0;
+
+  return session_update_stream_reset_ratelim(session);
 }
 
 static int session_process_rst_stream_frame(nghttp2_session *session) {
@@ -6994,6 +7023,9 @@ int nghttp2_session_add_window_update(nghttp2_session *session, uint8_t flags,
     nghttp2_mem_free(mem, item);
     return rv;
   }
+
+  session->goaway_flags |= NGHTTP2_GOAWAY_SUBMITTED;
+
   return 0;
 }
 
