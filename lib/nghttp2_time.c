@@ -23,6 +23,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "nghttp2_time.h"
+#include <time.h>
 
 #ifdef HAVE_TIME_H
 #  include <time.h>
