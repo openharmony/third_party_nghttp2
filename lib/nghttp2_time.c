@@ -33,6 +33,10 @@
 #endif /* HAVE_SYSINFOAPI_H */
 
 #ifndef HAVE_GETTICKCOUNT64
+#include <time.h>
+#endif /* HAVE_GETTICKCOUNT64 */
+
+#ifndef HAVE_GETTICKCOUNT64
 static uint64_t time_now_sec(void) {
   time_t t = time(NULL);
 
