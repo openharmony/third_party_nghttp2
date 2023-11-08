@@ -23,6 +23,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "nghttp2_time.h"
+#include <time.h>
 
 #ifdef HAVE_TIME_H
 #  include <time.h>
@@ -31,10 +32,6 @@
 #ifdef HAVE_SYSINFOAPI_H
 #  include <sysinfoapi.h>
 #endif /* HAVE_SYSINFOAPI_H */
-
-#ifndef HAVE_GETTICKCOUNT64
-#include <time.h>
-#endif /* HAVE_GETTICKCOUNT64 */
 
 #ifndef HAVE_GETTICKCOUNT64
 static uint64_t time_now_sec(void) {
