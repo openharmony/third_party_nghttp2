@@ -95,6 +95,7 @@ if (defined(ohos_lite)) {
     ]
   }
 } else {
+  import("//build/config/config.gni")
   import("//build/ohos.gni")
 
   ohos_static_library("nghttp2") {
@@ -120,6 +121,14 @@ if (defined(ohos_lite)) {
         "HAVE_NETINET_IN_H=1",
       ]
     }
+    if (current_os == "ios") {
+      ldflags = [
+        "-Wl",
+        "-install_name",
+        "@rpath/libnghttp2.framework/libnghttp2",
+      ]
+      output_name = "nghttp2"
+    }
     sources = nghttp2_lib_sources
     if (target_os != "ios") {
       if (product_name != "ohos-sdk") {
@@ -133,5 +142,13 @@ if (defined(ohos_lite)) {
     subsystem_name = "thirdparty"
     innerapi_tags = [ "platformsdk" ]
     part_name = "nghttp2"
+  }
+
+  if (current_os == "ios") {
+    ohos_combine_darwin_framework("libnghttp2") {
+      deps = [ ":libnghttp2_shared" ]
+      subsystem_name = "thirdparty"
+      part_name = "nghttp2"
+    }
   }
 }
