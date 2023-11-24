@@ -189,6 +189,7 @@
         nghttp2_option_set_no_htt;
         nghttp2_option_set_no_rec;
         nghttp2_option_set_no_auto_window_update;
+        nghttp2_session_client_new2;
         nghttp2_option_set_peer_m;
         nghttp2_option_set_user_r;
         nghttp2_outbound_item_fre;
@@ -229,6 +230,11 @@
         nghttp2_rcbuf_new2;
         nghttp2_select_next_proto;
         nghttp2_session_add_goawa;
+        nghttp2_session_get_stream_local_window_size;
+        nghttp2_session_get_stream_effective_local_window_size;
+        nghttp2_session_get_stream_effective_recv_data_length;
+        nghttp2_session_callbacks_set_on_fram_send_callbacl;
+        nghttp2_session_get_local_window_size;
         nghttp2_session_add_item;
         nghttp2_session_add_ping;
         nghttp2_session_add_rst_s;
@@ -299,6 +305,8 @@
         nghttp2_session_upgrade2;
         nghttp2_session_want_read;
         nghttp2_session_want_writ;
+        nghttp2_session_get_remote_window_size;
+        nghttp2_session_get_stream_remote_window_size;
         nghttp2_set_debug_vprintf;
         nghttp2_should_send_windo;
         nghttp2_stream_attach_ite;
