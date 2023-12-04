@@ -178,6 +178,7 @@ void test_nghttp2_http_ignore_content_length(void);
 void test_nghttp2_http_record_request_method(void);
 void test_nghttp2_http_push_promise(void);
 void test_nghttp2_http_head_method_upgrade_workaround(void);
+void test_nghttp2_session_stream_reset_ratelim(void);
 void test_nghttp2_http_no_rfc9113_leading_and_trailing_ws_validation(void);
 
 #endif /* NGHTTP2_SESSION_TEST_H */

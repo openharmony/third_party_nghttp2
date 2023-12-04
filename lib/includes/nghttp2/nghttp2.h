@@ -2729,6 +2729,23 @@ NGHTTP2_EXTERN void nghttp2_option_set_max_settings(nghttp2_option *option,
 /**
  * @function
  *
+ * This function sets the rate limit for the incoming stream reset
+ * (RST_STREAM frame).  It is server use only.  It is a token-bucket
+ * based rate limiter.  |burst| specifies the number of tokens that is
+ * initially available.  The maximum number of tokens is capped to
+ * this value.  |rate| specifies the number of tokens that are
+ * regenerated per second.  An incoming RST_STREAM consumes one token.
+ * If there is no token available, GOAWAY is sent to tear down the
+ * connection.  |burst| and |rate| default to 1000 and 33
+ * respectively.
+ */
+NGHTTP2_EXTERN void
+nghttp2_option_set_stream_reset_rate_limit(nghttp2_option *option,
+                                           uint64_t burst, uint64_t rate);
+
+/**
+ * @function
+ *
  * This option, if set to nonzero, allows server to fallback to
  * :rfc:`7540` priorities if SETTINGS_NO_RFC7540_PRIORITIES was not
  * received from client, and server submitted
