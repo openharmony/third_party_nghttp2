@@ -45,10 +45,12 @@ nghttp2_lib_sources = [
   "nghttp2_pq.c",
   "nghttp2_priority_spec.c",
   "nghttp2_queue.c",
+  "nghttp2_ratelim.c",
   "nghttp2_rcbuf.c",
   "nghttp2_session.c",
   "nghttp2_stream.c",
   "nghttp2_submit.c",
+  "nghttp2_time.c",
   "nghttp2_version.c",
 ]
 
@@ -57,7 +59,10 @@ config("nghttp2_lib_config") {
     ".",
     "./includes",
   ]
-  defines = [ "HAVE_ARPA_INET_H=1" ]
+  defines = [
+    "HAVE_ARPA_INET_H=1",
+    "HAVE_TIME_H=1",
+  ]
 }
 
 if (defined(ohos_lite)) {
@@ -111,7 +116,7 @@ if (defined(ohos_lite)) {
   ohos_shared_library("libnghttp2_shared") {
     include_dirs = [ "includes" ]
     license_file = "//third_party/nghttp2/COPYING"
-    defines = []
+    defines = [ "HAVE_TIME_H=1" ]
     if (is_linux || is_mac || is_ohos) {
       defines += [
         "HAVE_ARPA_INET_H=1",

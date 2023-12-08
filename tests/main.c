@@ -40,6 +40,7 @@
 #include "nghttp2_npn_test.h"
 #include "nghttp2_helper_test.h"
 #include "nghttp2_buf_test.h"
+#include "nghttp2_ratelim_test.h"
 #include "nghttp2_http_test.h"
 #include "nghttp2_extpri_test.h"
 
@@ -339,6 +340,8 @@ int main(void) {
                    test_nghttp2_session_no_closed_streams) ||
       !CU_add_test(pSuite, "session_set_stream_user_data",
                    test_nghttp2_session_set_stream_user_data) ||
+      !CU_add_test(pSuite, "session_stream_reset_ratelim",
++                   test_nghttp2_session_stream_reset_ratelim) ||
       !CU_add_test(pSuite, "session_no_rfc7540_priorities",
                    test_nghttp2_session_no_rfc7540_priorities) ||
       !CU_add_test(pSuite, "session_server_fallback_rfc7540_priorities",
@@ -447,6 +450,8 @@ int main(void) {
       !CU_add_test(pSuite, "bufs_next_present",
                    test_nghttp2_bufs_next_present) ||
       !CU_add_test(pSuite, "bufs_realloc", test_nghttp2_bufs_realloc) ||
+      !CU_add_test(pSuite, "ratelim_update", test_nghttp2_ratelim_update) ||
+      !CU_add_test(pSuite, "ratelim_drain", test_nghttp2_ratelim_drain)) ||
       !CU_add_test(pSuite, "http_parse_priority",
                    test_nghttp2_http_parse_priority) ||
       !CU_add_test(pSuite, "sf_parse_item", test_nghttp2_sf_parse_item) ||

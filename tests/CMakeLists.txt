@@ -20,6 +20,7 @@ if(HAVE_CUNIT)
     nghttp2_npn_test.c
     nghttp2_helper_test.c
     nghttp2_buf_test.c
+    nghttp2_ratelim_test.c
     nghttp2_http_test.c
     nghttp2_extpri_test.c
   )

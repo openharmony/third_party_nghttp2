@@ -181,7 +181,8 @@ jobs:
     - name: Configure autotools
       run: |
         autoreconf -i
-        ./configure
+        ./configure --enable-werror --with-mruby \
+        CFLAGS="-g -O2 -D_WIN32_WINNT=0x0600"
     - name: Configure cmake (Linux)
       if: matrix.buildtool == 'cmake' && runner.os == 'Linux'
       run: |
