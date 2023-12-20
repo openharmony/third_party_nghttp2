@@ -62,5 +62,10 @@
 				<filteritem type="filename" name="*.m4" desc="Ignore this file, we do not use it."/>
             </filefilter>
         </filefilterlist>
+        <licensematcherlist>
+            <licensematcher name="BSD License" desc="如果工具扫描是InvalidLicense，可在此定义匹配规则，注意引号要转义" >
+            <licensetext name=":license: BSD, see LICENSE for details." desc="BSD License"/>
+            </licensematcher>
+        <licensematcherlist>
     </oatconfig>
 </configuration>
