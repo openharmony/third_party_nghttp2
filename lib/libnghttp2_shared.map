@@ -192,6 +192,7 @@
         nghttp2_session_client_new2;
         nghttp2_option_set_peer_m;
         nghttp2_option_set_user_r;
+        nghttp2_option_set_no_rfc9113_leading_and_trailing_ws_validation;
         nghttp2_outbound_item_fre;
         nghttp2_outbound_item_ini;
         nghttp2_outbound_queue_in;
