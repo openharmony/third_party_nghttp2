@@ -5,12 +5,12 @@ on: [push, pull_request]
 permissions: read-all
 
 env:
-  LIBBPF_VERSION: v1.2.0
-  OPENSSL1_VERSION: 1_1_1u+quic
-  OPENSSL3_VERSION: 3.1.0+quic
-  BORINGSSL_VERSION: 80dcb67d4481fb1194b9669917e35580c32dc388
-  NGHTTP3_VERSION: v0.13.0
-  NGTCP2_VERSION: v0.17.0
+  LIBBPF_VERSION: v1.2.2
+  OPENSSL1_VERSION: 1_1_1w+quic
+  OPENSSL3_VERSION: 3.1.2+quic
+  BORINGSSL_VERSION: 6ca49385b168f47a50e7172d82a590b218f55e4d
+  NGHTTP3_VERSION: v1.0.0
+  NGTCP2_VERSION: v1.0.1
 
 jobs:
   build-cache:
@@ -21,7 +21,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Restore libbpf cache
       id: cache-libbpf
       uses: actions/cache@v3
@@ -200,7 +200,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Linux setup
       if: runner.os == 'Linux'
       run: |
@@ -394,7 +394,7 @@ jobs:
         cd $NGHTTP2_CMAKE_DIR
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
-    - uses: actions/setup-go@v3
+    - uses: actions/setup-go@v4
       if: matrix.buildtool == 'cmake'
       with:
         go-version-file: go.mod
@@ -417,7 +417,7 @@ jobs:
       HOST: ${{ matrix.host }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Linux setup
       run: |
         sudo dpkg --add-architecture i386
@@ -467,7 +467,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: microsoft/setup-msbuild@v1
     - run: |
         vcpkg --triplet=${{ matrix.arch }}-windows install cunit
