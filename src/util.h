@@ -957,13 +957,11 @@ StringRef rstrip(BlockAllocator &balloc, const StringRef &s);
 #ifdef ENABLE_HTTP3
 int msghdr_get_local_addr(Address &dest, msghdr *msg, int family);
 
-unsigned int msghdr_get_ecn(msghdr *msg, int family);
+uint8_t msghdr_get_ecn(msghdr *msg, int family);
 
 // msghdr_get_udp_gro returns UDP_GRO value from |msg|.  If UDP_GRO is
 // not found, or UDP_GRO is not supported, this function returns 0.
 size_t msghdr_get_udp_gro(msghdr *msg);
-
-int fd_set_send_ecn(int fd, int family, unsigned int ecn);
 #endif // ENABLE_HTTP3
 
 } // namespace util

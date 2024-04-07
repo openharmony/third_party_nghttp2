@@ -89,7 +89,8 @@ public:
 
   int init(const UpstreamAddr *faddr, const Address &remote_addr,
            const Address &local_addr, const ngtcp2_pkt_hd &initial_hd,
-           const ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen);
+           const ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen,
+           ngtcp2_token_type token_type);
 
   int on_read(const UpstreamAddr *faddr, const Address &remote_addr,
               const Address &local_addr, const ngtcp2_pkt_info &pi,
@@ -124,6 +125,7 @@ public:
   void consume(int64_t stream_id, size_t nconsumed);
   void remove_downstream(Downstream *downstream);
   int stream_close(int64_t stream_id, uint64_t app_error_code);
+  int stream_reset(int64_t stream_id);
   void log_response_headers(Downstream *downstream,
                             const std::vector<nghttp3_nv> &nva) const;
   int http_acked_stream_data(Downstream *downstream, uint64_t datalen);
