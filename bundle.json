@@ -30,35 +30,7 @@
         },
         "build": {
             "sub_component": [],
-            "inner_kits": [
-                {
-                    "name":"//third_party/nghttp2/lib:nghttp2_lib_static",
-                    "header":{
-                        "header_files":[],
-                        "header_base": [
-                            "//third_party/nghttp2/lib/includes"
-                        ]
-                    }
-                },
-                {
-                    "name":"//third_party/nghttp2/lib:nghttp2_lib_shared",
-                    "header":{
-                        "header_files":[],
-                        "header_base": [
-                            "//third_party/nghttp2/lib/includes"
-                        ]
-                    }
-                },
-                {
-                    "name":"//third_party/nghttp2/lib:libnghttp2_shared",
-                    "header":{
-                        "header_files":[],
-                        "header_base": [
-                            "//third_party/nghttp2/lib/includes"
-                        ]
-                    }
-                }
-            ],
+            "inner_kits": [],
             "test": []
         }
     }
