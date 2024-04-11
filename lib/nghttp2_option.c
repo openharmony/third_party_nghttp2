@@ -150,3 +150,8 @@ void nghttp2_option_set_no_rfc9113_leading_and_trailing_ws_validation(
       NGHTTP2_OPT_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION;
   option->no_rfc9113_leading_and_trailing_ws_validation = val;
 }
+
+void nghttp2_option_set_max_continuations(nghttp2_option *option, size_t val) {
+  option->opt_set_mask |= NGHTTP2_OPT_MAX_CONTINUATIONS;
+  option->max_continuations = val;
+}
