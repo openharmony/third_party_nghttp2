@@ -30,7 +30,18 @@
         },
         "build": {
             "sub_component": [],
-            "inner_kits": [],
+            "inner_kits": [
+                {
+                    "name":"//third_party/nghttp2/lib:libnghttp2_shared",
+                    "header":{
+                        "header_files":[],
+                        "header_base": [
+                            "//third_party/nghttp2/lib/includes",
+                            "//third_party/nghttp2/lib/includes/nghttp2"
+                        ]
+                    }
+                }
+            ],
             "test": []
         }
     }
