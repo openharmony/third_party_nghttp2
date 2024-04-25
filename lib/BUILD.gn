@@ -111,19 +111,9 @@ if (defined(ohos_lite)) {
     sources = nghttp2_lib_sources
   }
 
-  config("libnghttp2_shared_config_public") {
-    include_dirs = [
-      "//third_party/nghttp2/lib/includes",
-      "//third_party/nghttp2/lib/includes/nghttp2",
-    ]
-
-    cflags = [ "-Wno-deprecated-declarations" ]
-  }
-
   ohos_shared_library("libnghttp2_shared") {
     include_dirs = [ "includes" ]
     license_file = "//third_party/nghttp2/COPYING"
-    public_configs = [ ":libnghttp2_shared_config_public" ]
     defines = [ "HAVE_TIME_H=1" ]
     if (is_linux || is_mac || is_ohos) {
       defines += [
