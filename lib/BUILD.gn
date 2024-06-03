@@ -101,6 +101,7 @@ if (defined(ohos_lite)) {
   ohos_static_library("nghttp2") {
     include_dirs = [ "includes" ]
     license_file = "//third_party/nghttp2/COPYING"
+    public_configs = [ ":libnghttp2_shared_config_public" ]
     defines = []
     if (is_linux || is_mac || is_ohos) {
       defines += [
