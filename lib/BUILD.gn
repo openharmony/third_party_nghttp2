@@ -139,6 +139,7 @@ if (defined(ohos_lite)) {
       ]
       output_name = "nghttp2"
     }
+    branch_protector_ret = "pac_ret"
     sources = nghttp2_lib_sources
     if (target_os != "ios") {
       if (product_name != "ohos-sdk") {
