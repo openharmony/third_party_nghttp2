@@ -27,6 +27,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 nghttp2_lib_sources = [
+  "nghttp2_alpn.c",
   "nghttp2_buf.c",
   "nghttp2_callbacks.c",
   "nghttp2_debug.c",
