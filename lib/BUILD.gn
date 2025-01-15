@@ -40,7 +40,6 @@ nghttp2_lib_sources = [
   "nghttp2_http.c",
   "nghttp2_map.c",
   "nghttp2_mem.c",
-  "nghttp2_npn.c",
   "nghttp2_option.c",
   "nghttp2_outbound_item.c",
   "nghttp2_pq.c",
