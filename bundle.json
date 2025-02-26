@@ -40,6 +40,15 @@
                             "//third_party/nghttp2/lib/includes/nghttp2"
                         ]
                     }
+                },
+                {
+                    "name":"//third_party/nghttp2/lib:libllhttp",
+                    "header":{
+                        "header_files":[],
+                        "header_base": [
+                            "//third_party/nghttp2/third-party/llhttp/include"
+                        ]
+                    }
                 }
             ],
             "test": []
