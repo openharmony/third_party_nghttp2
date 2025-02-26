@@ -55,12 +55,24 @@ nghttp2_lib_sources = [
   "sfparse.c",
 ]
 
+llhttp_sources = [
+  "../third-party/llhttp/src/api.c",
+  "../third-party/llhttp/src/http.c",
+  "../third-party/llhttp/src/llhttp.c",
+]
+
 config("nghttp2_lib_config") {
   include_dirs = [
     ".",
     "./includes",
   ]
   defines = [ "HAVE_ARPA_INET_H=1" ]
+}
+
+config("llhttp_public_config") {
+  include_dirs = [
+    "../third-party/llhttp/include",
+  ]
 }
 
 if (defined(ohos_lite)) {
@@ -72,6 +84,11 @@ if (defined(ohos_lite)) {
     sources = nghttp2_lib_sources
     public_configs = [ ":nghttp2_lib_config" ]
     output_name = "nghttp2"
+  }
+
+  lite_library("llhttp_lib_static") {
+    target_type = "static_library"
+    sources = llhttp_sources
   }
 
   lite_library("nghttp2_lib_shared") {
@@ -109,6 +126,11 @@ if (defined(ohos_lite)) {
       ]
     }
     sources = nghttp2_lib_sources
+  }
+
+  ohos_static_library("libllhttp") {
+    sources = llhttp_sources
+    public_configs = [ ":llhttp_public_config" ]
   }
 
   config("libnghttp2_shared_config_public") {
