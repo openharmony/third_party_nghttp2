@@ -70,9 +70,7 @@ config("nghttp2_lib_config") {
 }
 
 config("llhttp_public_config") {
-  include_dirs = [
-    "../third-party/llhttp/include",
-  ]
+  include_dirs = [ "../third-party/llhttp/include" ]
 }
 
 if (defined(ohos_lite)) {
