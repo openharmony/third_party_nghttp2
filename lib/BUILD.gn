@@ -171,7 +171,10 @@ if (defined(ohos_lite)) {
       ]
     }
     subsystem_name = "thirdparty"
-    innerapi_tags = [ "platformsdk" ]
+    innerapi_tags = [
+      "chipsetsdk_indirect",
+      "platformsdk",
+    ]
     part_name = "nghttp2"
   }
 
