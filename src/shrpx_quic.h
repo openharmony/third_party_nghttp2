@@ -33,7 +33,14 @@
 #include <optional>
 #include <span>
 
-#include <openssl/evp.h>
+#include "ssl_compat.h"
+
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <wolfssl/options.h>
+#  include <wolfssl/openssl/evp.h>
+#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <openssl/evp.h>
+#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
 #include <ngtcp2/ngtcp2.h>
 
@@ -71,12 +78,12 @@ constexpr size_t SHRPX_QUIC_CID_WORKER_ID_OFFSET = 1;
 constexpr size_t SHRPX_QUIC_SERVER_IDLEN = 4;
 constexpr size_t SHRPX_QUIC_SOCK_IDLEN = 4;
 constexpr size_t SHRPX_QUIC_WORKER_IDLEN =
-    SHRPX_QUIC_SERVER_IDLEN + SHRPX_QUIC_SOCK_IDLEN;
+  SHRPX_QUIC_SERVER_IDLEN + SHRPX_QUIC_SOCK_IDLEN;
 constexpr size_t SHRPX_QUIC_CLIENT_IDLEN = 8;
 constexpr size_t SHRPX_QUIC_DECRYPTED_DCIDLEN =
-    SHRPX_QUIC_WORKER_IDLEN + SHRPX_QUIC_CLIENT_IDLEN;
+  SHRPX_QUIC_WORKER_IDLEN + SHRPX_QUIC_CLIENT_IDLEN;
 constexpr size_t SHRPX_QUIC_SCIDLEN =
-    SHRPX_QUIC_CID_WORKER_ID_OFFSET + SHRPX_QUIC_DECRYPTED_DCIDLEN;
+  SHRPX_QUIC_CID_WORKER_ID_OFFSET + SHRPX_QUIC_DECRYPTED_DCIDLEN;
 constexpr size_t SHRPX_QUIC_CID_ENCRYPTION_KEYLEN = 16;
 constexpr size_t SHRPX_QUIC_CONN_CLOSE_PKTLEN = 256;
 constexpr size_t SHRPX_QUIC_STATELESS_RESET_BURST = 100;
