@@ -57,14 +57,15 @@ bool operator==(const ngtcp2_cid &lhs, const ngtcp2_cid &rhs) {
 namespace shrpx {
 
 ngtcp2_tstamp quic_timestamp() {
-  return std::chrono::duration_cast<std::chrono::nanoseconds>(
-           std::chrono::steady_clock::now().time_since_epoch())
-    .count();
+  return static_cast<ngtcp2_tstamp>(
+    std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::steady_clock::now().time_since_epoch())
+      .count());
 }
 
 int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
-                     size_t remote_salen, const sockaddr *local_sa,
-                     size_t local_salen, const ngtcp2_pkt_info &pi,
+                     socklen_t remote_salen, const sockaddr *local_sa,
+                     socklen_t local_salen, const ngtcp2_pkt_info &pi,
                      std::span<const uint8_t> data, size_t gso_size) {
   assert(gso_size);
 
@@ -128,7 +129,7 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     cm->cmsg_level = SOL_UDP;
     cm->cmsg_type = UDP_SEGMENT;
     cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
-    uint16_t n = gso_size;
+    auto n = static_cast<uint16_t>(gso_size);
     memcpy(CMSG_DATA(cm), &n, sizeof(n));
   }
 #endif // UDP_SEGMENT
@@ -154,7 +155,13 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     assert(0);
   }
 
-  msg.msg_controllen = controllen;
+  msg.msg_controllen =
+#ifndef __APPLE__
+    controllen
+#else  // defined(__APPLE__)
+    static_cast<socklen_t>(controllen)
+#endif // defined(__APPLE__)
+    ;
 
   ssize_t nwrite;
 
@@ -195,7 +202,8 @@ int generate_quic_retry_connection_id(ngtcp2_cid &cid, uint32_t server_id,
 
   auto p = cid.data + SHRPX_QUIC_CID_WORKER_ID_OFFSET;
 
-  std::copy_n(reinterpret_cast<uint8_t *>(&server_id), sizeof(server_id), p);
+  std::ranges::copy_n(reinterpret_cast<uint8_t *>(&server_id),
+                      sizeof(server_id), p);
 
   return encrypt_quic_connection_id(p, p, ctx);
 }
@@ -211,7 +219,7 @@ int generate_quic_connection_id(ngtcp2_cid &cid, const WorkerID &wid,
 
   auto p = cid.data + SHRPX_QUIC_CID_WORKER_ID_OFFSET;
 
-  std::copy_n(reinterpret_cast<const uint8_t *>(&wid), sizeof(wid), p);
+  std::ranges::copy_n(reinterpret_cast<const uint8_t *>(&wid), sizeof(wid), p);
 
   return encrypt_quic_connection_id(p, p, ctx);
 }
@@ -249,7 +257,7 @@ int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
   auto d = defer(EVP_MD_CTX_free, ctx);
 
   std::array<uint8_t, 32> h;
-  unsigned int hlen = EVP_MD_size(EVP_sha256());
+  auto hlen = static_cast<unsigned int>(EVP_MD_size(EVP_sha256()));
 
   if (!EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) ||
       !EVP_DigestUpdate(ctx, &remote_addr.su.sa, remote_addr.len) ||
@@ -261,7 +269,8 @@ int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
 
   assert(hlen == h.size());
 
-  std::copy_n(std::begin(h), sizeof(dest.data), std::begin(dest.data));
+  std::ranges::copy_n(std::ranges::begin(h), sizeof(dest.data),
+                      std::ranges::begin(dest.data));
   dest.datalen = sizeof(dest.data);
 
   return 0;
@@ -283,9 +292,10 @@ generate_retry_token(std::span<uint8_t> token, uint32_t version,
                      const sockaddr *sa, socklen_t salen,
                      const ngtcp2_cid &retry_scid, const ngtcp2_cid &odcid,
                      std::span<const uint8_t> secret) {
-  auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
-             std::chrono::system_clock::now().time_since_epoch())
-             .count();
+  auto t = static_cast<ngtcp2_tstamp>(
+    std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::system_clock::now().time_since_epoch())
+      .count());
 
   auto tokenlen = ngtcp2_crypto_generate_retry_token(
     token.data(), secret.data(), secret.size(), version, sa, salen, &retry_scid,
@@ -294,16 +304,17 @@ generate_retry_token(std::span<uint8_t> token, uint32_t version,
     return {};
   }
 
-  return {{std::begin(token), static_cast<size_t>(tokenlen)}};
+  return token.first(as_unsigned(tokenlen));
 }
 
 int verify_retry_token(ngtcp2_cid &odcid, std::span<const uint8_t> token,
                        uint32_t version, const ngtcp2_cid &dcid,
                        const sockaddr *sa, socklen_t salen,
                        std::span<const uint8_t> secret) {
-  auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
-             std::chrono::system_clock::now().time_since_epoch())
-             .count();
+  auto t = static_cast<ngtcp2_tstamp>(
+    std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::system_clock::now().time_since_epoch())
+      .count());
 
   if (ngtcp2_crypto_verify_retry_token(
         &odcid, token.data(), token.size(), secret.data(), secret.size(),
@@ -317,19 +328,21 @@ int verify_retry_token(ngtcp2_cid &odcid, std::span<const uint8_t> token,
 std::optional<std::span<const uint8_t>>
 generate_token(std::span<uint8_t> token, const sockaddr *sa, size_t salen,
                std::span<const uint8_t> secret, uint8_t km_id) {
-  auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
-             std::chrono::system_clock::now().time_since_epoch())
-             .count();
+  auto t = static_cast<ngtcp2_tstamp>(
+    std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::system_clock::now().time_since_epoch())
+      .count());
 
   auto tokenlen = ngtcp2_crypto_generate_regular_token(
-    token.data(), secret.data(), secret.size(), sa, salen, t);
+    token.data(), secret.data(), secret.size(), sa,
+    static_cast<ngtcp2_socklen>(salen), t);
   if (tokenlen < 0) {
     return {};
   }
 
-  token[tokenlen++] = km_id;
+  token[as_unsigned(tokenlen++)] = km_id;
 
-  return {{std::begin(token), static_cast<size_t>(tokenlen)}};
+  return token.first(as_unsigned(tokenlen));
 }
 
 int verify_token(std::span<const uint8_t> token, const sockaddr *sa,
@@ -338,9 +351,10 @@ int verify_token(std::span<const uint8_t> token, const sockaddr *sa,
     return -1;
   }
 
-  auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
-             std::chrono::system_clock::now().time_since_epoch())
-             .count();
+  auto t = static_cast<ngtcp2_tstamp>(
+    std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::system_clock::now().time_since_epoch())
+      .count());
 
   if (ngtcp2_crypto_verify_regular_token(
         token.data(), token.size() - 1, secret.data(), secret.size(), sa, salen,
@@ -377,6 +391,27 @@ select_quic_keying_material(const QUICKeyingMaterials &qkms, uint8_t km_id) {
   }
 
   return &qkms.keying_materials.front();
+}
+
+std::span<uint64_t, 2> generate_siphash_key() {
+  // Use the same technique rust does.
+  thread_local static auto key = []() {
+    std::array<uint64_t, 2> key;
+
+    auto s = as_writable_uint8_span(std::span{key});
+
+    auto rv = RAND_bytes(s.data(), s.size());
+    if (rv != 1) {
+      assert(0);
+      abort();
+    }
+
+    return key;
+  }();
+
+  ++key[0];
+
+  return key;
 }
 
 } // namespace shrpx

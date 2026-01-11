@@ -70,9 +70,9 @@ namespace shrpx {
 
 class Http2Session;
 class ConnectBlocker;
-class MemcachedDispatcher;
 struct UpstreamAddr;
 class ConnectionHandler;
+class AcceptHandler;
 #ifdef ENABLE_HTTP3
 class QUICListener;
 #endif // ENABLE_HTTP3
@@ -95,15 +95,15 @@ struct DownstreamAddr {
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
-  StringRef host;
-  StringRef hostport;
+  std::string_view host;
+  std::string_view hostport;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
   bool host_unix;
 
   // sni field to send remote server if TLS is enabled.
-  StringRef sni;
+  std::string_view sni;
 
   std::unique_ptr<ConnectBlocker> connect_blocker;
   std::unique_ptr<LiveCheck> live_check;
@@ -137,7 +137,7 @@ struct DownstreamAddr {
   // 256], inclusive.
   uint32_t weight;
   // name of group which this address belongs to.
-  StringRef group;
+  std::string_view group;
   // Weight of the weight group which this address belongs to.  Its
   // range is [1, 256], inclusive.
   uint32_t group_weight;
@@ -179,6 +179,7 @@ struct WeightGroup {
   std::priority_queue<DownstreamAddrEntry, std::vector<DownstreamAddrEntry>,
                       DownstreamAddrEntryGreater>
     pq;
+  std::string_view name;
   size_t seq;
   uint32_t weight;
   uint32_t cycle;
@@ -278,7 +279,7 @@ struct QUICPacket {
       remote_addr{remote_addr},
       local_addr{local_addr},
       pi{pi},
-      data{std::begin(data), std::end(data)} {}
+      data{std::ranges::begin(data), std::ranges::end(data)} {}
   QUICPacket() : upstream_addr_index{}, remote_addr{}, local_addr{}, pi{} {}
   size_t upstream_addr_index;
   Address remote_addr;
@@ -289,7 +290,6 @@ struct QUICPacket {
 #endif // ENABLE_HTTP3
 
 enum class WorkerEventType {
-  NEW_CONNECTION = 0x01,
   REOPEN_LOG = 0x02,
   GRACEFUL_SHUTDOWN = 0x03,
   REPLACE_DOWNSTREAM = 0x04,
@@ -300,12 +300,6 @@ enum class WorkerEventType {
 
 struct WorkerEvent {
   WorkerEventType type;
-  struct {
-    sockaddr_union client_addr;
-    size_t client_addrlen;
-    int client_fd;
-    const UpstreamAddr *faddr;
-  };
   std::shared_ptr<TicketKeys> ticket_keys;
   std::shared_ptr<DownstreamConfig> downstreamconf;
 #ifdef ENABLE_HTTP3
@@ -316,16 +310,12 @@ struct WorkerEvent {
 class Worker {
 public:
   Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
-         SSL_CTX *tls_session_cache_memcached_ssl_ctx,
          tls::CertLookupTree *cert_tree,
 #ifdef ENABLE_HTTP3
          SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
          WorkerID wid,
-#  ifdef HAVE_LIBBPF
-         size_t index,
-#  endif // HAVE_LIBBPF
-#endif   // ENABLE_HTTP3
-         const std::shared_ptr<TicketKeys> &ticket_keys,
+#endif // ENABLE_HTTP3
+         size_t index, const std::shared_ptr<TicketKeys> &ticket_keys,
          ConnectionHandler *conn_handler,
          std::shared_ptr<DownstreamConfig> downstreamconf);
   ~Worker();
@@ -358,8 +348,6 @@ public:
   MemchunkPool *get_mcpool();
   void schedule_clear_mcpool();
 
-  MemcachedDispatcher *get_session_cache_memcached_dispatcher();
-
   std::mt19937 &get_randgen();
 
 #ifdef HAVE_MRUBY
@@ -379,6 +367,14 @@ public:
   replace_downstream_config(std::shared_ptr<DownstreamConfig> downstreamconf);
 
   ConnectionHandler *get_connection_handler() const;
+
+  int setup_server_socket();
+  void delete_listener();
+  void accept_pending_connection();
+  int create_tcp_server_socket(UpstreamAddr &addr);
+  void enable_listener();
+  void disable_listener();
+  void sleep_listener(ev_tstamp t);
 
 #ifdef ENABLE_HTTP3
   QUICConnectionHandler *get_quic_connection_handler();
@@ -403,23 +399,28 @@ public:
 
   DNSTracker *get_dns_tracker();
 
+  int handle_connection(int fd, sockaddr *addr, socklen_t addrlen,
+                        const UpstreamAddr *faddr);
+
 private:
 #ifndef NOTHREADS
   std::future<void> fut_;
 #endif // NOTHREADS
-#if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
   // Unique index of this worker.
   size_t index_;
-#endif // ENABLE_HTTP3 && HAVE_LIBBPF
   std::mutex m_;
   std::deque<WorkerEvent> q_;
   std::mt19937 randgen_;
   ev_async w_;
   ev_timer mcpool_clear_timer_;
   ev_timer proc_wev_timer_;
+  ev_timer disable_listener_timer_;
   MemchunkPool mcpool_;
   WorkerStat worker_stat_;
   DNSTracker dns_tracker_;
+
+  std::vector<UpstreamAddr> upstream_addrs_;
+  std::vector<std::unique_ptr<AcceptHandler>> listeners_;
 
 #ifdef ENABLE_HTTP3
   WorkerID worker_id_;
@@ -428,7 +429,6 @@ private:
 #endif // ENABLE_HTTP3
 
   std::shared_ptr<DownstreamConfig> downstreamconf_;
-  std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
 #ifdef HAVE_MRUBY
   std::unique_ptr<mruby::MRubyContext> mruby_ctx_;
 #endif // HAVE_MRUBY
@@ -468,8 +468,8 @@ private:
 // group.  The catch-all group index is given in |catch_all|.  All
 // patterns are given in |groups|.
 size_t match_downstream_addr_group(
-  const RouterConfig &routerconfig, const StringRef &hostport,
-  const StringRef &path,
+  const RouterConfig &routerconfig, const std::string_view &hostport,
+  const std::string_view &path,
   const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
   size_t catch_all, BlockAllocator &balloc);
 
