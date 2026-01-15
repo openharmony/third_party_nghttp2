@@ -3,7 +3,7 @@
         "Name"                  : "nghttp2",
         "License"               : "The MIT License",
         "License File"          : "COPYING",
-        "Version Number"        : "v1.64.0",
+        "Version Number"        : "v1.66.0",
         "Owner"                 : "zhuwenchao@huawei.com",
         "Upstream URL"          : "https://nghttp2.org",
         "Description"           : "nghttp2 is an implementation of HTTP/2 and its header compression algorithm HPACK in C."

@@ -61,13 +61,11 @@
 
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_config.h"
-#include "shrpx_exec.h"
 
 namespace shrpx {
 
 class Http2Session;
 class ConnectBlocker;
-class AcceptHandler;
 class Worker;
 struct WorkerStat;
 struct TicketKeys;
@@ -79,20 +77,6 @@ namespace tls {
 class CertLookupTree;
 
 } // namespace tls
-
-struct OCSPUpdateContext {
-  // ocsp response buffer
-  std::vector<uint8_t> resp;
-  // Process running fetch-ocsp-response script
-  Process proc;
-  // index to ConnectionHandler::all_ssl_ctx_, which points to next
-  // SSL_CTX to update ocsp response cache.
-  size_t next;
-  ev_child chldev;
-  ev_io rev;
-  // errno encountered while processing response
-  int error;
-};
 
 // SerialEvent is an event sent from Worker thread.
 enum class SerialEventType {
@@ -141,8 +125,6 @@ class ConnectionHandler {
 public:
   ConnectionHandler(struct ev_loop *loop, std::mt19937 &gen);
   ~ConnectionHandler();
-  int handle_connection(int fd, sockaddr *addr, int addrlen,
-                        const UpstreamAddr *faddr);
   // Creates Worker object for single threaded configuration.
   int create_single_worker();
   // Creates |num| Worker objects for multi threaded configuration.
@@ -155,31 +137,10 @@ public:
   const std::shared_ptr<TicketKeys> &get_ticket_keys() const;
   struct ev_loop *get_loop() const;
   Worker *get_single_worker() const;
-  void add_acceptor(std::unique_ptr<AcceptHandler> h);
-  void delete_acceptor();
-  void enable_acceptor();
-  void disable_acceptor();
-  void sleep_acceptor(ev_tstamp t);
-  void accept_pending_connection();
   void graceful_shutdown_worker();
   void set_graceful_shutdown(bool f);
   bool get_graceful_shutdown() const;
   void join_worker();
-
-  // Cancels ocsp update process
-  void cancel_ocsp_update();
-  // Starts ocsp update for certificate |cert_file|.
-  int start_ocsp_update(const char *cert_file);
-  // Reads incoming data from ocsp update process
-  void read_ocsp_chunk();
-  // Handles the completion of one ocsp update
-  void handle_ocsp_complete();
-  // Resets ocsp_;
-  void reset_ocsp();
-  // Proceeds to the next certificate's ocsp update.  If all
-  // certificates' ocsp update has been done, schedule next ocsp
-  // update.
-  void proceed_next_cert_ocsp();
 
   void set_tls_ticket_key_memcached_dispatcher(
     std::unique_ptr<MemcachedDispatcher> dispatcher);
@@ -250,8 +211,6 @@ public:
   void
   worker_replace_downstream(std::shared_ptr<DownstreamConfig> downstreamconf);
 
-  void set_enable_acceptor_on_ocsp_completion(bool f);
-
 private:
   // Stores all SSL_CTX objects.
   std::vector<SSL_CTX *> all_ssl_ctx_;
@@ -273,7 +232,6 @@ private:
   std::vector<SSL_CTX *> quic_all_ssl_ctx_;
   std::vector<std::vector<SSL_CTX *>> quic_indexed_ssl_ctx_;
 #endif // ENABLE_HTTP3
-  OCSPUpdateContext ocsp_;
   std::mt19937 &gen_;
   // ev_loop for each worker
   std::vector<struct ev_loop *> worker_loops_;
@@ -298,12 +256,9 @@ private:
   // Worker object.
   std::shared_ptr<TicketKeys> ticket_keys_;
   struct ev_loop *loop_;
-  std::vector<std::unique_ptr<AcceptHandler>> acceptors_;
 #ifdef HAVE_NEVERBLEED
   neverbleed_t *nb_;
 #endif // HAVE_NEVERBLEED
-  ev_timer disable_acceptor_timer_;
-  ev_timer ocsp_timer_;
   ev_async thread_join_asyncev_;
   ev_async serial_event_asyncev_;
 #ifndef NOTHREADS
@@ -313,9 +268,6 @@ private:
   size_t tls_ticket_key_memcached_fail_count_;
   unsigned int worker_round_robin_cnt_;
   bool graceful_shutdown_;
-  // true if acceptors should be enabled after the initial ocsp update
-  // has finished.
-  bool enable_acceptor_on_ocsp_completion_;
 };
 
 } // namespace shrpx

@@ -38,31 +38,33 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/evp.h>
+#  include <wolfssl/openssl/rand.h>
 #else // !NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <openssl/evp.h>
+#  include <openssl/rand.h>
 #endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
 #include <ngtcp2/ngtcp2.h>
 
+#include "siphash.h"
+#include "template.h"
 #include "network.h"
 
 using namespace nghttp2;
 
+namespace shrpx {
+std::span<uint64_t, 2> generate_siphash_key();
+} // namespace shrpx
+
 namespace std {
 template <> struct hash<ngtcp2_cid> {
+  hash() { std::ranges::copy(shrpx::generate_siphash_key(), key.begin()); }
+
   std::size_t operator()(const ngtcp2_cid &cid) const noexcept {
-    // FNV-1a 64bits variant
-    constexpr uint64_t basis = 0xCBF29CE484222325ULL;
-    const uint8_t *p = cid.data, *end = cid.data + cid.datalen;
-    uint64_t h = basis;
-
-    for (; p != end;) {
-      h ^= *p++;
-      h *= basis;
-    }
-
-    return static_cast<size_t>(h);
+    return static_cast<size_t>(siphash24(key, {cid.data, cid.datalen}));
   }
+
+  std::array<uint64_t, 2> key;
 };
 } // namespace std
 
@@ -122,8 +124,8 @@ struct ConnectionID {
 ngtcp2_tstamp quic_timestamp();
 
 int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
-                     size_t remote_salen, const sockaddr *local_sa,
-                     size_t local_salen, const ngtcp2_pkt_info &pi,
+                     socklen_t remote_salen, const sockaddr *local_sa,
+                     socklen_t local_salen, const ngtcp2_pkt_info &pi,
                      std::span<const uint8_t> data, size_t gso_size);
 
 int generate_quic_retry_connection_id(ngtcp2_cid &cid, uint32_t server_id,

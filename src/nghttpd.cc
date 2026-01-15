@@ -177,8 +177,6 @@ Options:
   --no-content-length
               Don't send content-length header field.
   --ktls      Enable ktls.
-  --no-rfc7540-pri
-              Disable RFC7540 priorities.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -248,7 +246,7 @@ int main(int argc, char **argv) {
         std::cerr << "-b: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.padding = *n;
+      config.padding = static_cast<size_t>(*n);
       break;
     }
     case 'd':
@@ -264,7 +262,7 @@ int main(int argc, char **argv) {
         std::cerr << "-m: invalid argument: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.max_concurrent_streams = *n;
+      config.max_concurrent_streams = static_cast<size_t>(*n);
       break;
     }
     case 'n': {
@@ -277,7 +275,7 @@ int main(int argc, char **argv) {
         std::cerr << "-n: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.num_worker = *n;
+      config.num_worker = static_cast<size_t>(*n);
 #endif // NOTHREADS
       break;
     }
@@ -317,9 +315,9 @@ int main(int argc, char **argv) {
       }
 
       if (c == 'w') {
-        config.window_bits = *n;
+        config.window_bits = static_cast<int>(*n);
       } else {
-        config.connection_window_bits = *n;
+        config.connection_window_bits = static_cast<int>(*n);
       }
 
       break;
@@ -352,13 +350,13 @@ int main(int argc, char **argv) {
       case 6: {
         // trailer option
         auto header = optarg;
-        auto value = strchr(optarg, ':');
-        if (!value) {
+        auto name_end = strchr(optarg, ':');
+        if (!name_end) {
           std::cerr << "--trailer: invalid header: " << optarg << std::endl;
           exit(EXIT_FAILURE);
         }
-        *value = 0;
-        value++;
+        *name_end = 0;
+        auto value = name_end + 1;
         while (isspace(*value)) {
           value++;
         }
@@ -369,8 +367,8 @@ int main(int argc, char **argv) {
                     << std::endl;
           exit(EXIT_FAILURE);
         }
+        util::tolower(header, name_end, header);
         config.trailer.emplace_back(header, value, false);
-        util::inp_strlower(config.trailer.back().name);
         break;
       }
       case 7:
@@ -413,7 +411,8 @@ int main(int argc, char **argv) {
         break;
       case 13:
         // no-rfc7540-pri option
-        config.no_rfc7540_pri = true;
+        std::cerr << "[WARNING]: --no-rfc7540-pri option has been deprecated."
+                  << std::endl;
         break;
       }
       break;
@@ -434,7 +433,7 @@ int main(int argc, char **argv) {
       std::cerr << "<PORT>: Bad value: " << portStr << std::endl;
       exit(EXIT_FAILURE);
     }
-    config.port = *n;
+    config.port = static_cast<uint16_t>(*n);
   }
 
   if (!config.no_tls) {
