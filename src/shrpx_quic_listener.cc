@@ -74,8 +74,8 @@ void QUICListener::on_read() {
       return;
     }
 
-    // Packets less than 22 bytes never be a valid QUIC packet.
-    if (nread < 22) {
+    // Packets less than 21 bytes never be a valid QUIC packet.
+    if (nread < 21) {
       ++pktcnt;
 
       continue;
@@ -106,7 +106,7 @@ void QUICListener::on_read() {
       gso_size = static_cast<size_t>(nread);
     }
 
-    auto data = std::span{std::begin(buf), static_cast<size_t>(nread)};
+    auto data = std::span{buf}.first(as_unsigned(nread));
 
     for (;;) {
       auto datalen = std::min(data.size(), gso_size);
@@ -121,8 +121,8 @@ void QUICListener::on_read() {
                   << " bytes";
       }
 
-      // Packets less than 22 bytes never be a valid QUIC packet.
-      if (datalen < 22) {
+      // Packets less than 21 bytes never be a valid QUIC packet.
+      if (datalen < 21) {
         break;
       }
 
@@ -131,7 +131,7 @@ void QUICListener::on_read() {
       remote_addr.len = msg.msg_namelen;
 
       quic_conn_handler->handle_packet(faddr_, remote_addr, local_addr, pi,
-                                       {std::begin(data), datalen});
+                                       data.first(datalen));
 
       data = data.subspan(datalen);
       if (data.empty()) {

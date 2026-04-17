@@ -32,8 +32,12 @@
 
 #include "shrpx_upstream.h"
 #include "shrpx_downstream_queue.h"
-#include "quic.h"
 #include "network.h"
+#include "ssl_compat.h"
+
+#if defined(ENABLE_HTTP3) && OPENSSL_3_5_0_API
+#  include <ngtcp2/ngtcp2_crypto_ossl.h>
+#endif // defined(ENABLE_HTTP3) && OPENSSL_3_5_0_API
 
 using namespace nghttp2;
 
@@ -73,7 +77,8 @@ public:
   virtual int send_reply(Downstream *downstream, const uint8_t *body,
                          size_t bodylen);
 
-  virtual int initiate_push(Downstream *downstream, const StringRef &uri);
+  virtual int initiate_push(Downstream *downstream,
+                            const std::string_view &uri);
 
   virtual int response_riovec(struct iovec *iov, int iovcnt) const;
   virtual void response_drain(size_t n);
@@ -138,16 +143,16 @@ public:
   int submit_goaway();
   std::pair<std::span<const uint8_t>, int>
   send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
-              size_t remote_salen, const sockaddr *local_sa, size_t local_salen,
-              const ngtcp2_pkt_info &pi, std::span<const uint8_t> data,
-              size_t gso_size);
+              socklen_t remote_salen, const sockaddr *local_sa,
+              socklen_t local_salen, const ngtcp2_pkt_info &pi,
+              std::span<const uint8_t> data, size_t gso_size);
+  int send_packet(const ngtcp2_path &path, const ngtcp2_pkt_info &pi,
+                  const std::span<const uint8_t> data, size_t gso_size);
 
   void qlog_write(const void *data, size_t datalen, bool fin);
-  int open_qlog_file(const StringRef &dir, const ngtcp2_cid &scid) const;
+  int open_qlog_file(const std::string_view &dir, const ngtcp2_cid &scid) const;
 
-  void on_send_blocked(const UpstreamAddr *faddr,
-                       const ngtcp2_addr &remote_addr,
-                       const ngtcp2_addr &local_addr, const ngtcp2_pkt_info &pi,
+  void on_send_blocked(const ngtcp2_path &path, const ngtcp2_pkt_info &pi,
                        std::span<const uint8_t> data, size_t gso_size);
   int send_blocked_packet();
   void signal_write_upstream_addr(const UpstreamAddr *faddr);
@@ -165,6 +170,9 @@ private:
   ngtcp2_cid hashed_scid_;
   ngtcp2_conn *conn_;
   ngtcp2_ccerr last_error_;
+#if OPENSSL_3_5_0_API
+  ngtcp2_crypto_ossl_ctx *ossl_ctx_;
+#endif // OPENSSL_3_5_0_API
   nghttp3_conn *httpconn_;
   DownstreamQueue downstream_queue_;
   std::vector<uint8_t> conn_close_;

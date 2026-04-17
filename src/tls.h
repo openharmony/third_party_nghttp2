@@ -65,7 +65,7 @@ constexpr auto DEFAULT_TLS13_CIPHER_LIST =
   "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:"
   "TLS_CHACHA20_POLY1305_SHA256"sv
 #else  // !NGHTTP2_GENUINE_OPENSSL && !NGHTTP2_OPENSSL_IS_LIBRESSL
-  ""
+  ""sv
 #endif // !NGHTTP2_GENUINE_OPENSSL && !NGHTTP2_OPENSSL_IS_LIBRESSL
   ;
 
@@ -76,11 +76,11 @@ constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_3_VERSION;
 constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_2_VERSION;
 #endif // !TLS1_3_VERSION
 
-const char *get_tls_protocol(SSL *ssl);
+std::string_view get_tls_protocol(SSL *ssl);
 
 struct TLSSessionInfo {
   const char *cipher;
-  const char *protocol;
+  std::string_view protocol;
   const uint8_t *session_id;
   bool session_reused;
   size_t session_id_length;

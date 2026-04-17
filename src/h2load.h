@@ -42,6 +42,7 @@
 #include <memory>
 #include <chrono>
 #include <array>
+#include <span>
 
 #define NGHTTP2_NO_SSIZE_T
 #include <nghttp2/nghttp2.h>
@@ -55,6 +56,10 @@
 
 #include "ssl_compat.h"
 
+#if defined(ENABLE_HTTP3) && OPENSSL_3_5_0_API
+#  include <ngtcp2/ngtcp2_crypto_ossl.h>
+#endif // defined(ENABLE_HTTP3) && OPENSSL_3_5_0_API
+
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
@@ -63,9 +68,6 @@
 #endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
 #include "http2.h"
-#ifdef ENABLE_HTTP3
-#  include "quic.h"
-#endif // ENABLE_HTTP3
 #include "memchunk.h"
 #include "template.h"
 
@@ -340,7 +342,7 @@ struct Stream {
 
 struct Client {
   DefaultMemchunks wb;
-  std::unordered_map<int32_t, Stream> streams;
+  std::unordered_map<int64_t, Stream> streams;
   ClientStat cstat;
   std::unique_ptr<Session> session;
   ev_io wev;
@@ -354,6 +356,9 @@ struct Client {
     ev_timer pkt_timer;
     ngtcp2_conn *conn;
     ngtcp2_ccerr last_error;
+#  if OPENSSL_3_5_0_API
+    ngtcp2_crypto_ossl_ctx *ossl_ctx;
+#  endif // OPENSSL_3_5_0_API
     bool close_requested;
     FILE *qlog_file;
 
@@ -363,11 +368,11 @@ struct Client {
       size_t num_blocked_sent;
       struct {
         Address remote_addr;
-        const uint8_t *data;
-        size_t datalen;
+        std::span<const uint8_t> data;
         size_t gso_size;
       } blocked[2];
       std::unique_ptr<uint8_t[]> data;
+      bool no_gso;
     } tx;
   } quic;
 #endif // ENABLE_HTTP3
@@ -459,19 +464,19 @@ struct Client {
 
   int connection_made();
 
-  void on_request(int32_t stream_id);
-  void on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
+  void on_request(int64_t stream_id);
+  void on_header(int64_t stream_id, const uint8_t *name, size_t namelen,
                  const uint8_t *value, size_t valuelen);
-  void on_status_code(int32_t stream_id, uint16_t status);
+  void on_status_code(int64_t stream_id, uint16_t status);
   // |success| == true means that the request/response was exchanged
   // |successfully, but it does not mean response carried successful
   // |HTTP status code.
-  void on_stream_close(int32_t stream_id, bool success, bool final = false);
+  void on_stream_close(int64_t stream_id, bool success, bool final = false);
   // Returns RequestStat for |stream_id|.  This function must be
   // called after on_request(stream_id), and before
   // on_stream_close(stream_id, ...).  Otherwise, this will return
   // nullptr.
-  RequestStat *get_req_stat(int32_t stream_id);
+  RequestStat *get_req_stat(int64_t stream_id);
 
   void record_request_time(RequestStat *req_stat);
   void record_connect_start_time();
@@ -490,10 +495,13 @@ struct Client {
   void quic_free();
   int read_quic();
   int write_quic();
-  int write_udp(const sockaddr *addr, socklen_t addrlen, const uint8_t *data,
-                size_t datalen, size_t gso_size);
-  void on_send_blocked(const ngtcp2_addr &remote_addr, const uint8_t *data,
-                       size_t datalen, size_t gso_size);
+  std::span<const uint8_t> write_udp(const sockaddr *addr, socklen_t addrlen,
+                                     std::span<const uint8_t> data,
+                                     size_t gso_size);
+  int write_udp_or_blocked(const ngtcp2_path &path,
+                           std::span<const uint8_t> data, size_t gso_size);
+  void on_send_blocked(const ngtcp2_addr &remote_addr,
+                       std::span<const uint8_t> data, size_t gso_size);
   int send_blocked_packet();
   void quic_close_connection();
 
