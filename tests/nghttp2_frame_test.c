@@ -516,7 +516,7 @@ void test_nghttp2_frame_pack_altsvc(void) {
   nghttp2_frame_altsvc_free(&oframe, mem);
   nghttp2_frame_altsvc_free(&frame, mem);
 
-    /* 0 length origin and field_value */
+  /* 0 length origin and field_value */
   nghttp2_frame_altsvc_init(&frame, 0, NULL, 0, NULL, 0);
 
   payloadlen = 2;

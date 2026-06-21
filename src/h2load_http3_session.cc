@@ -28,6 +28,15 @@
 
 #include <ngtcp2/ngtcp2.h>
 
+#include "ssl_compat.h"
+
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <wolfssl/options.h>
+#  include <wolfssl/openssl/rand.h>
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
+#  include <openssl/rand.h>
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
+
 #include "h2load.h"
 
 namespace h2load {
@@ -99,8 +108,9 @@ int64_t Http3Session::submit_request_internal() {
     return rv;
   }
 
-  nghttp3_data_reader dr{};
-  dr.read_data = h2load::read_data;
+  nghttp3_data_reader dr{
+    .read_data = h2load::read_data,
+  };
 
   rv = nghttp3_conn_submit_request(
     conn_, stream_id, reinterpret_cast<nghttp3_nv *>(nva.data()), nva.size(),
@@ -317,6 +327,17 @@ int Http3Session::extend_max_local_streams() {
   return 0;
 }
 
+namespace {
+void rand(uint8_t *dest, size_t destlen) {
+  auto rv =
+    RAND_bytes(dest, static_cast<nghttp2_ssl_rand_length_type>(destlen));
+  if (rv != 1) {
+    assert(0);
+    abort();
+  }
+}
+} // namespace
+
 int Http3Session::init_conn() {
   int rv;
 
@@ -327,20 +348,16 @@ int Http3Session::init_conn() {
   }
 
   nghttp3_callbacks callbacks{
-    nullptr, // acked_stream_data
-    h2load::stream_close,
-    h2load::recv_data,
-    h2load::deferred_consume,
-    h2load::begin_headers,
-    h2load::recv_header,
-    nullptr, // end_headers
-    nullptr, // begin_trailers
-    h2load::recv_header,
-    nullptr, // end_trailers
-    h2load::stop_sending,
-    h2load::end_stream,
-    h2load::reset_stream,
-    nullptr, // shutdown
+    .stream_close = h2load::stream_close,
+    .recv_data = h2load::recv_data,
+    .deferred_consume = h2load::deferred_consume,
+    .begin_headers = h2load::begin_headers,
+    .recv_header = h2load::recv_header,
+    .recv_trailer = h2load::recv_header,
+    .stop_sending = h2load::stop_sending,
+    .end_stream = h2load::end_stream,
+    .reset_stream = h2load::reset_stream,
+    .rand = h2load::rand,
   };
 
   auto config = client_->worker->config;
@@ -407,10 +424,11 @@ int Http3Session::init_conn() {
 
 ssize_t Http3Session::read_stream(uint32_t flags, int64_t stream_id,
                                   const uint8_t *data, size_t datalen) {
-  auto nconsumed = nghttp3_conn_read_stream(
-    conn_, stream_id, data, datalen, flags & NGTCP2_STREAM_DATA_FLAG_FIN);
+  auto nconsumed = nghttp3_conn_read_stream2(
+    conn_, stream_id, data, datalen, flags & NGTCP2_STREAM_DATA_FLAG_FIN,
+    ngtcp2_conn_get_timestamp(client_->quic.conn));
   if (nconsumed < 0) {
-    std::cerr << "nghttp3_conn_read_stream: "
+    std::cerr << "nghttp3_conn_read_stream2: "
               << nghttp3_strerror(static_cast<int>(nconsumed)) << std::endl;
     ngtcp2_ccerr_set_application_error(
       &client_->quic.last_error,

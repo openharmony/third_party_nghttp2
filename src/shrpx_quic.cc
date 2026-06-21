@@ -41,9 +41,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include "shrpx_config.h"
 #include "shrpx_log.h"
@@ -69,23 +69,25 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
                      std::span<const uint8_t> data, size_t gso_size) {
   assert(gso_size);
 
-  iovec msg_iov = {const_cast<uint8_t *>(data.data()), data.size()};
-  msghdr msg{};
-  msg.msg_name = const_cast<sockaddr *>(remote_sa);
-  msg.msg_namelen = remote_salen;
-  msg.msg_iov = &msg_iov;
-  msg.msg_iovlen = 1;
+  iovec msg_iov = {
+    .iov_base = const_cast<uint8_t *>(data.data()),
+    .iov_len = data.size(),
+  };
 
   uint8_t msg_ctrl[CMSG_SPACE(sizeof(int)) +
 #ifdef UDP_SEGMENT
                    CMSG_SPACE(sizeof(uint16_t)) +
-#endif // UDP_SEGMENT
-                   CMSG_SPACE(sizeof(in6_pktinfo))];
+#endif // defined(UDP_SEGMENT)
+                   CMSG_SPACE(sizeof(in6_pktinfo))]{};
 
-  memset(msg_ctrl, 0, sizeof(msg_ctrl));
-
-  msg.msg_control = msg_ctrl;
-  msg.msg_controllen = sizeof(msg_ctrl);
+  msghdr msg{
+    .msg_name = const_cast<sockaddr *>(remote_sa),
+    .msg_namelen = remote_salen,
+    .msg_iov = &msg_iov,
+    .msg_iovlen = 1,
+    .msg_control = msg_ctrl,
+    .msg_controllen = sizeof(msg_ctrl),
+  };
 
   size_t controllen = 0;
 
@@ -97,10 +99,11 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     cm->cmsg_level = IPPROTO_IP;
     cm->cmsg_type = IP_PKTINFO;
     cm->cmsg_len = CMSG_LEN(sizeof(in_pktinfo));
-    in_pktinfo pktinfo{};
     auto addrin =
       reinterpret_cast<sockaddr_in *>(const_cast<sockaddr *>(local_sa));
-    pktinfo.ipi_spec_dst = addrin->sin_addr;
+    in_pktinfo pktinfo{
+      .ipi_spec_dst = addrin->sin_addr,
+    };
     memcpy(CMSG_DATA(cm), &pktinfo, sizeof(pktinfo));
 
     break;
@@ -110,10 +113,11 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     cm->cmsg_level = IPPROTO_IPV6;
     cm->cmsg_type = IPV6_PKTINFO;
     cm->cmsg_len = CMSG_LEN(sizeof(in6_pktinfo));
-    in6_pktinfo pktinfo{};
     auto addrin =
       reinterpret_cast<sockaddr_in6 *>(const_cast<sockaddr *>(local_sa));
-    pktinfo.ipi6_addr = addrin->sin6_addr;
+    in6_pktinfo pktinfo{
+      .ipi6_addr = addrin->sin6_addr,
+    };
     memcpy(CMSG_DATA(cm), &pktinfo, sizeof(pktinfo));
 
     break;
@@ -132,7 +136,7 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     auto n = static_cast<uint16_t>(gso_size);
     memcpy(CMSG_DATA(cm), &n, sizeof(n));
   }
-#endif // UDP_SEGMENT
+#endif // defined(UDP_SEGMENT)
 
   controllen += CMSG_SPACE(sizeof(int));
   cm = CMSG_NXTHDR(&msg, cm);
@@ -368,14 +372,15 @@ int verify_token(std::span<const uint8_t> token, const sockaddr *sa,
 int generate_quic_connection_id_encryption_key(std::span<uint8_t> key,
                                                std::span<const uint8_t> secret,
                                                std::span<const uint8_t> salt) {
-  constexpr uint8_t info[] = "connection id encryption key";
+  static constexpr auto info = "connection id encryption key"sv;
   ngtcp2_crypto_md sha256;
   ngtcp2_crypto_md_init(
     &sha256, reinterpret_cast<void *>(const_cast<EVP_MD *>(EVP_sha256())));
 
   if (ngtcp2_crypto_hkdf(key.data(), key.size(), &sha256, secret.data(),
-                         secret.size(), salt.data(), salt.size(), info,
-                         str_size(info)) != 0) {
+                         secret.size(), salt.data(), salt.size(),
+                         reinterpret_cast<const uint8_t *>(info.data()),
+                         info.size()) != 0) {
     return -1;
   }
 
