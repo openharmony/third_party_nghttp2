@@ -28,12 +28,12 @@
 #include <signal.h>
 #ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
-#endif // HAVE_NETINET_IN_H
+#endif // defined(HAVE_NETINET_IN_H)
 #include <netinet/tcp.h>
 #include <sys/stat.h>
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
-#endif // HAVE_FCNTL_H
+#endif // defined(HAVE_FCNTL_H)
 #include <sys/mman.h>
 #include <netinet/udp.h>
 
@@ -54,24 +54,26 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/err.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/err.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #ifdef ENABLE_HTTP3
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#  if defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||                                \
+    defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #    include <ngtcp2/ngtcp2_crypto_quictls.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||
+         // defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
 #    include <ngtcp2/ngtcp2_crypto_boringssl.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_BORINGSSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_WOLFSSL
 #    include <ngtcp2/ngtcp2_crypto_wolfssl.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_WOLFSSL
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_WOLFSSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_OSSL
 #    include <ngtcp2/ngtcp2_crypto_ossl.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_OSSL
-#endif   // ENABLE_HTTP3
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_OSSL)
+#endif   // defined(ENABLE_HTTP3)
 
 #include "urlparse.h"
 
@@ -80,7 +82,7 @@
 #ifdef ENABLE_HTTP3
 #  include "h2load_http3_session.h"
 #  include "h2load_quic.h"
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 #include "tls.h"
 #include "http2.h"
 #include "util.h"
@@ -88,7 +90,7 @@
 
 #ifndef O_BINARY
 #  define O_BINARY (0)
-#endif // O_BINARY
+#endif // !defined(O_BINARY)
 
 using namespace nghttp2;
 
@@ -161,9 +163,9 @@ bool Config::is_quic() const {
 #ifdef ENABLE_HTTP3
   return !alpn_list.empty() &&
          (alpn_list[0] == NGHTTP3_ALPN_H3 || alpn_list[0] == "\x5h3-29");
-#else  // !ENABLE_HTTP3
+#else  // !defined(ENABLE_HTTP3)
   return false;
-#endif // !ENABLE_HTTP3
+#endif // !defined(ENABLE_HTTP3)
 }
 Config config;
 
@@ -460,7 +462,7 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
     ssl(nullptr),
 #ifdef ENABLE_HTTP3
     quic{},
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
     next_addr(config.addrs),
     current_addr(nullptr),
     reqidx(0),
@@ -507,14 +509,16 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
   quic.pkt_timer.data = this;
 #  ifndef UDP_SEGMENT
   quic.tx.no_gso = true;
-#  endif // UDP_SEGMENT
+#  endif // !defined(UDP_SEGMENT)
 
   if (config.is_quic()) {
-    quic.tx.data = std::make_unique<uint8_t[]>(64_k);
+    ev_set_priority(&rev, EV_MAXPRI);
+
+    quic.tx.data = std::make_unique<uint8_t[]>(QUIC_TX_DATALEN);
   }
 
   ngtcp2_ccerr_default(&quic.last_error);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 }
 
 Client::~Client() {
@@ -530,7 +534,7 @@ Client::~Client() {
   if (config.is_quic()) {
     quic_free();
   }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   worker->sample_client_stat(&cstat);
   ++worker->client_smp.n;
@@ -555,7 +559,7 @@ int Client::make_socket(addrinfo *addr) {
       std::cerr << "setsockopt UDP_GRO failed" << std::endl;
       return -1;
     }
-#  endif // UDP_GRO
+#  endif // defined(UDP_GRO)
 
     rv = util::bind_any_addr_udp(fd, addr->ai_family);
     if (rv != 0) {
@@ -576,7 +580,7 @@ int Client::make_socket(addrinfo *addr) {
       std::cerr << "quic_init failed" << std::endl;
       return -1;
     }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
   } else {
     fd = util::create_nonblock_socket(addr->ai_family);
     if (fd == -1) {
@@ -671,7 +675,7 @@ int Client::connect() {
 
     readfn = &Client::read_quic;
     writefn = &Client::write_quic;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
   } else {
     writefn = &Client::connected;
   }
@@ -737,11 +741,11 @@ void Client::disconnect() {
   if (config.is_quic()) {
     quic_close_connection();
   }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 #ifdef ENABLE_HTTP3
   ev_timer_stop(worker->loop, &quic.pkt_timer);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
   ev_timer_stop(worker->loop, &conn_inactivity_watcher);
   ev_timer_stop(worker->loop, &conn_active_watcher);
   ev_timer_stop(worker->loop, &rps_watcher);
@@ -902,7 +906,7 @@ void print_server_tmp_key(SSL *ssl) {
   }
 }
 } // namespace
-#endif // !NGHTTP2_OPENSSL_IS_BORINGSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
 void Client::report_tls_info() {
   if (worker->id == 0 && !worker->tls_info_report_done) {
@@ -912,7 +916,7 @@ void Client::report_tls_info() {
               << "Cipher: " << SSL_CIPHER_get_name(cipher) << std::endl;
 #ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
     print_server_tmp_key(ssl);
-#endif // !NGHTTP2_OPENSSL_IS_BORINGSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   }
 }
 
@@ -928,7 +932,7 @@ void Client::terminate_session() {
   if (config.is_quic()) {
     quic.close_requested = true;
   }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
   if (session) {
     session->terminate();
   }
@@ -1133,7 +1137,7 @@ int Client::connection_made() {
         if ("h3"sv != proto && "h3-29"sv != proto) {
           return -1;
         }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
       } else if (util::check_h2_is_selected(proto)) {
         session = std::make_unique<Http2Session>(this);
       } else if (NGHTTP2_H1_1 == proto) {
@@ -1478,15 +1482,17 @@ std::span<const uint8_t> Client::write_udp(const sockaddr *addr,
     return {};
   }
 
-  iovec msg_iov;
-  msg_iov.iov_base = const_cast<uint8_t *>(data.data());
-  msg_iov.iov_len = data.size();
+  iovec msg_iov{
+    .iov_base = const_cast<uint8_t *>(data.data()),
+    .iov_len = data.size(),
+  };
 
-  msghdr msg{};
-  msg.msg_name = const_cast<sockaddr *>(addr);
-  msg.msg_namelen = addrlen;
-  msg.msg_iov = &msg_iov;
-  msg.msg_iovlen = 1;
+  msghdr msg{
+    .msg_name = const_cast<sockaddr *>(addr),
+    .msg_namelen = addrlen,
+    .msg_iov = &msg_iov,
+    .msg_iovlen = 1,
+  };
 
 #  ifdef UDP_SEGMENT
   std::array<uint8_t, CMSG_SPACE(sizeof(uint16_t))> msg_ctrl{};
@@ -1501,7 +1507,7 @@ std::span<const uint8_t> Client::write_udp(const sockaddr *addr,
     auto n = static_cast<uint16_t>(gso_size);
     memcpy(CMSG_DATA(cm), &n, sizeof(n));
   }
-#  endif // UDP_SEGMENT
+#  endif // defined(UDP_SEGMENT)
 
   auto nwrite = sendmsg(fd, &msg, 0);
   if (nwrite < 0) {
@@ -1524,7 +1530,7 @@ std::span<const uint8_t> Client::write_udp(const sockaddr *addr,
 
   return {};
 }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 void Client::record_request_time(RequestStat *req_stat) {
   req_stat->request_time = std::chrono::steady_clock::now();
@@ -1874,15 +1880,16 @@ void resolve_host() {
 
     config.addrs = res.release();
     return;
-  };
+  }
 
   int rv;
-  addrinfo hints{}, *res;
+  addrinfo *res;
 
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_protocol = 0;
-  hints.ai_flags = AI_ADDRCONFIG;
+  addrinfo hints{
+    .ai_flags = AI_ADDRCONFIG,
+    .ai_family = AF_UNSPEC,
+    .ai_socktype = SOCK_STREAM,
+  };
 
   const auto &resolve_host =
     config.connect_to_host.empty() ? config.host : config.connect_to_host;
@@ -2191,9 +2198,9 @@ Options:
       << util::utos_unit(config.max_frame_size) << R"(
   -w, --window-bits=<N>
               Sets the stream level initial window size to (2**<N>)-1.
-              For QUIC, <N> is capped to 26 (roughly 64MiB).
-              Default: )"
-      << config.window_bits << R"(
+              For  QUIC, <N>  is  capped to  26  (roughly 64MiB).   It
+              defaults  to  24 (16MiB)  for  QUIC,  and 30  for  other
+              protocols.
   -W, --connection-window-bits=<N>
               Sets  the  connection  level   initial  window  size  to
               (2**<N>)-1.
@@ -2368,6 +2375,7 @@ int main(int argc, char **argv) {
   std::string datafile;
   std::string logfile;
   bool nreqs_set_manually = false;
+  auto window_bits_set_manually = false;
   while (1) {
     static int flag = 0;
     constexpr static option long_options[] = {
@@ -2444,14 +2452,14 @@ int main(int argc, char **argv) {
 #ifdef NOTHREADS
       std::cerr << "-t: WARNING: Threading disabled at build time, "
                 << "no threads created." << std::endl;
-#else
+#else  // !defined(NOTHREADS)
       auto n = util::parse_uint(optarg);
       if (!n) {
         std::cerr << "-t: bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
       config.nthreads = static_cast<size_t>(*n);
-#endif // NOTHREADS
+#endif // !defined(NOTHREADS)
       break;
     }
     case 'm': {
@@ -2473,6 +2481,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
       }
       if (c == 'w') {
+        window_bits_set_manually = true;
         config.window_bits = static_cast<size_t>(*n);
       } else {
         config.connection_window_bits = static_cast<size_t>(*n);
@@ -2786,7 +2795,11 @@ int main(int argc, char **argv) {
 
   // serialize the APLN tokens
   for (auto &proto : config.alpn_list) {
-    proto.insert(proto.begin(), static_cast<char>(proto.size()));
+    proto.insert(std::ranges::begin(proto), static_cast<char>(proto.size()));
+  }
+
+  if (config.is_quic() && !window_bits_set_manually) {
+    config.window_bits = 24;
   }
 
   std::vector<std::string> reqlines;
@@ -2948,17 +2961,19 @@ int main(int argc, char **argv) {
               << std::endl;
   }
 
-  struct sigaction act {};
+  struct sigaction act{};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 
 #ifdef ENABLE_HTTP3
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#  if defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||                                \
+    defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
   if (ngtcp2_crypto_quictls_init() != 0) {
     std::cerr << "ngtcp2_crypto_quictls_init failed" << std::endl;
     exit(EXIT_FAILURE);
   }
-#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS)
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||
+         // defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_OSSL
   if (ngtcp2_crypto_ossl_init() != 0) {
     std::cerr << "ngtcp2_crypto_ossl_init failed" << std::endl;
@@ -2983,7 +2998,7 @@ int main(int argc, char **argv) {
   if (config.ktls) {
     ssl_opts |= SSL_OP_ENABLE_KTLS;
   }
-#endif // SSL_OP_ENABLE_KTLS
+#endif // defined(SSL_OP_ENABLE_KTLS)
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
@@ -2991,28 +3006,30 @@ int main(int argc, char **argv) {
 
   if (config.is_quic()) {
 #ifdef ENABLE_HTTP3
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#  if defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||                                \
+    defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
     if (ngtcp2_crypto_quictls_configure_client_context(ssl_ctx) != 0) {
       std::cerr << "ngtcp2_crypto_quictls_configure_client_context failed"
                 << std::endl;
       exit(EXIT_FAILURE);
     }
-#  endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||
+         // defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
     if (ngtcp2_crypto_boringssl_configure_client_context(ssl_ctx) != 0) {
       std::cerr << "ngtcp2_crypto_boringssl_configure_client_context failed"
                 << std::endl;
       exit(EXIT_FAILURE);
     }
-#  endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_BORINGSSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_WOLFSSL
     if (ngtcp2_crypto_wolfssl_configure_client_context(ssl_ctx) != 0) {
       std::cerr << "ngtcp2_crypto_wolfssl_configure_client_context failed"
                 << std::endl;
       exit(EXIT_FAILURE);
     }
-#  endif // HAVE_LIBNGTCP2_CRYPTO_WOLFSSL
-#endif   // ENABLE_HTTP3
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_WOLFSSL)
+#endif   // defined(ENABLE_HTTP3)
   } else if (nghttp2::tls::ssl_ctx_set_proto_versions(
                ssl_ctx, nghttp2::tls::NGHTTP2_TLS_MIN_VERSION,
                nghttp2::tls::NGHTTP2_TLS_MAX_VERSION) != 0) {
@@ -3035,23 +3052,14 @@ int main(int argc, char **argv) {
               << std::endl;
     exit(EXIT_FAILURE);
   }
-#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_LIBRESSL ||
-       // NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // defined(NGHTTP2_GENUINE_OPENSSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_LIBRESSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
-#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
-  // Passing X25519 to SSL_CTX_set1_groups_list fails for some reason.
-  if (SSL_CTX_set1_curves_list(
-        ssl_ctx, const_cast<char *>(config.groups.c_str())) != 1) {
-    std::cerr << "SSL_CTX_set1_curves_list failed: "
-              << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
-    exit(EXIT_FAILURE);
-  }
-#else  // !NGHTTP2_OPENSSL_IS_WOLFSSL
   if (SSL_CTX_set1_groups_list(ssl_ctx, config.groups.c_str()) != 1) {
     std::cerr << "SSL_CTX_set1_groups_list failed" << std::endl;
     exit(EXIT_FAILURE);
   }
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
   std::vector<unsigned char> proto_list;
   for (const auto &proto : config.alpn_list) {
@@ -3074,7 +3082,8 @@ int main(int argc, char **argv) {
     std::cerr << "SSL_CTX_add_cert_compression_alg failed" << std::endl;
     exit(EXIT_FAILURE);
   }
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // defined(HAVE_LIBBROTLI)
 
   std::string user_agent = "h2load nghttp2/" NGHTTP2_VERSION;
   Headers shared_nva;
@@ -3241,7 +3250,7 @@ int main(int argc, char **argv) {
 
 #  ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
         wc_ecc_fp_free();
-#  endif // NGHTTP2_OPENSSL_IS_WOLFSSL
+#  endif // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
       }));
   }
 
@@ -3257,7 +3266,7 @@ int main(int argc, char **argv) {
     fut.get();
   }
 
-#else  // NOTHREADS
+#else  // defined(NOTHREADS)
   auto rate = config.rate;
   auto nclients = config.nclients;
   auto nreqs =
@@ -3269,7 +3278,7 @@ int main(int argc, char **argv) {
   auto start = std::chrono::steady_clock::now();
 
   workers.back()->run();
-#endif // NOTHREADS
+#endif // defined(NOTHREADS)
 
   auto end = std::chrono::steady_clock::now();
   auto duration =
@@ -3359,7 +3368,7 @@ traffic: )" << util::utos_funit(as_unsigned(stats.bytes_total))
     std::cout << "UDP datagram: " << stats.udp_dgram_sent << " sent, "
               << stats.udp_dgram_recv << " received" << std::endl;
   }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
   std::cout
     << R"(                     min         max         mean         sd        +/- sd
 time for request: )"

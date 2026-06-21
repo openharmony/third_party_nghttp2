@@ -30,10 +30,10 @@
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif // HAVE_SYS_SOCKET_H
+#endif // defined(HAVE_SYS_SOCKET_H)
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
-#endif // HAVE_NETDB_H
+#endif // defined(HAVE_NETDB_H)
 #include <sys/un.h>
 
 #include <vector>
@@ -50,7 +50,7 @@
 #ifdef ENABLE_HTTP3
 #  include <ngtcp2/ngtcp2.h>
 #  include <ngtcp2/ngtcp2_crypto.h>
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 #include <ev.h>
 
@@ -63,9 +63,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include "http2.h"
 #include "memchunk.h"
@@ -75,7 +75,7 @@ using namespace nghttp2;
 
 namespace h2load {
 
-constexpr auto BACKOFF_WRITE_BUFFER_THRES = 16_k;
+inline constexpr auto BACKOFF_WRITE_BUFFER_THRES = 16_k;
 
 class Session;
 struct Worker;
@@ -364,18 +364,16 @@ struct Client {
 
     struct {
       bool send_blocked;
-      size_t num_blocked;
-      size_t num_blocked_sent;
       struct {
         Address remote_addr;
         std::span<const uint8_t> data;
         size_t gso_size;
-      } blocked[2];
+      } blocked;
       std::unique_ptr<uint8_t[]> data;
       bool no_gso;
     } tx;
   } quic;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
   ev_timer request_timeout_watcher;
   addrinfo *next_addr;
   // Address for the current address.  When try_new_connection() is
@@ -495,11 +493,13 @@ struct Client {
   void quic_free();
   int read_quic();
   int write_quic();
+  ngtcp2_ssize write_quic_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
+                              uint8_t *dest, size_t destlen, ngtcp2_tstamp ts);
   std::span<const uint8_t> write_udp(const sockaddr *addr, socklen_t addrlen,
                                      std::span<const uint8_t> data,
                                      size_t gso_size);
-  int write_udp_or_blocked(const ngtcp2_path &path,
-                           std::span<const uint8_t> data, size_t gso_size);
+  void write_udp_or_blocked(const ngtcp2_path &path,
+                            std::span<const uint8_t> data, size_t gso_size);
   void on_send_blocked(const ngtcp2_addr &remote_addr,
                        std::span<const uint8_t> data, size_t gso_size);
   int send_blocked_packet();
@@ -521,9 +521,9 @@ struct Client {
   void quic_restart_pkt_timer();
   void quic_write_qlog(const void *data, size_t datalen);
   int quic_make_http3_session();
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 };
 
 } // namespace h2load
 
-#endif // H2LOAD_H
+#endif // !defined(H2LOAD_H)
