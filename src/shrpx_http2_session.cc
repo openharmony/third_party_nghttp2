@@ -27,7 +27,7 @@
 #include <netinet/tcp.h>
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 
 #include <vector>
 
@@ -36,9 +36,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/err.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/err.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include "shrpx_upstream.h"
 #include "shrpx_downstream.h"
@@ -1634,6 +1634,8 @@ nghttp2_session_callbacks *create_http2_downstream_callbacks() {
     nghttp2_session_callbacks_set_select_padding_callback2(
       callbacks, http::select_padding_callback);
   }
+
+  nghttp2_session_callbacks_set_rand_callback(callbacks, util::secure_random);
 
   return callbacks;
 }

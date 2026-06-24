@@ -27,23 +27,23 @@
 #include <sys/stat.h>
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif // HAVE_SYS_SOCKET_H
+#endif // defined(HAVE_SYS_SOCKET_H)
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
-#endif // HAVE_NETDB_H
+#endif // defined(HAVE_NETDB_H)
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
-#endif // HAVE_FCNTL_H
+#endif // defined(HAVE_FCNTL_H)
 #ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
-#endif // HAVE_NETINET_IN_H
+#endif // defined(HAVE_NETINET_IN_H)
 #include <netinet/tcp.h>
 #ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
-#endif // HAVE_ARPA_INET_H
+#endif // defined(HAVE_ARPA_INET_H)
 
 #include <cassert>
 #include <unordered_set>
@@ -58,13 +58,13 @@
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/err.h>
 #  include <wolfssl/openssl/dh.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/err.h>
 #  include <openssl/dh.h>
 #  if OPENSSL_3_0_0_API
 #    include <openssl/decoder.h>
 #  endif // OPENSSL_3_0_0_API
-#endif   // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif   // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <zlib.h>
 
@@ -76,9 +76,10 @@
 
 #ifndef O_BINARY
 #  define O_BINARY (0)
-#endif // O_BINARY
+#endif // !defined(O_BINARY)
 
 using namespace std::chrono_literals;
+using namespace std::string_literals;
 
 namespace nghttp2 {
 
@@ -101,6 +102,7 @@ void print_session_id(int64_t id) { std::cout << "[id=" << id << "] "; }
 
 Config::Config()
   : mime_types_file("/etc/mime.types"),
+    groups("X25519:P-256:P-384:P-521"sv),
     stream_read_timeout(1_min),
     stream_write_timeout(1_min),
     data_ptr(nullptr),
@@ -1780,6 +1782,8 @@ void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config) {
     nghttp2_session_callbacks_set_select_padding_callback2(
       callbacks, select_padding_callback);
   }
+
+  nghttp2_session_callbacks_set_rand_callback(callbacks, util::secure_random);
 }
 } // namespace
 
@@ -1820,7 +1824,7 @@ void run_worker(Worker *worker) {
 
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
   wc_ecc_fp_free();
-#endif // NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 }
 } // namespace
 
@@ -1905,15 +1909,15 @@ public:
     for (;;) {
 #ifdef HAVE_ACCEPT4
       auto fd = accept4(fd_, nullptr, nullptr, SOCK_NONBLOCK);
-#else  // !HAVE_ACCEPT4
+#else  // !defined(HAVE_ACCEPT4)
       auto fd = accept(fd_, nullptr, nullptr);
-#endif // !HAVE_ACCEPT4
+#endif // !defined(HAVE_ACCEPT4)
       if (fd == -1) {
         break;
       }
 #ifndef HAVE_ACCEPT4
       util::make_socket_nonblocking(fd);
-#endif // !HAVE_ACCEPT4
+#endif // !defined(HAVE_ACCEPT4)
       acceptor_->accept_connection(fd);
     }
   }
@@ -2015,13 +2019,15 @@ int start_listen(HttpServer *sv, struct ev_loop *loop, Sessions *sessions,
   std::shared_ptr<AcceptHandler> acceptor;
   auto service = util::utos(config->port);
 
-  addrinfo hints{};
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE;
+  addrinfo hints{
+    .ai_flags = AI_PASSIVE
 #ifdef AI_ADDRCONFIG
-  hints.ai_flags |= AI_ADDRCONFIG;
-#endif // AI_ADDRCONFIG
+                | AI_ADDRCONFIG
+#endif // defined(AI_ADDRCONFIG)
+    ,
+    .ai_family = AF_UNSPEC,
+    .ai_socktype = SOCK_STREAM,
+  };
 
   if (!config->address.empty()) {
     addr = config->address.c_str();
@@ -2054,7 +2060,7 @@ int start_listen(HttpServer *sv, struct ev_loop *loop, Sessions *sessions,
         continue;
       }
     }
-#endif // IPV6_V6ONLY
+#endif // defined(IPV6_V6ONLY)
     if (bind(fd, rp->ai_addr, rp->ai_addrlen) == 0 && listen(fd, 1000) == 0) {
       if (!acceptor) {
         acceptor = std::make_shared<AcceptHandler>(sv, sessions, config);
@@ -2124,7 +2130,7 @@ int HttpServer::run() {
     if (config_->ktls) {
       ssl_opts |= SSL_OP_ENABLE_KTLS;
     }
-#endif // SSL_OP_ENABLE_KTLS
+#endif // defined(SSL_OP_ENABLE_KTLS)
 
     SSL_CTX_set_options(ssl_ctx, ssl_opts);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
@@ -2149,19 +2155,17 @@ int HttpServer::run() {
       std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
       return -1;
     }
-#endif // NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
     const unsigned char sid_ctx[] = "nghttpd";
     SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
     SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
 
-#ifndef OPENSSL_NO_EC
-    if (SSL_CTX_set1_curves_list(ssl_ctx, "P-256") != 1) {
-      std::cerr << "SSL_CTX_set1_curves_list failed: "
+    if (SSL_CTX_set1_groups_list(ssl_ctx, config_->groups.data()) != 1) {
+      std::cerr << "SSL_CTX_set1_groups_list failed: "
                 << ERR_error_string(ERR_get_error(), nullptr);
       return -1;
     }
-#endif // OPENSSL_NO_EC
 
     if (!config_->dh_param_file.empty()) {
       // Read DH parameters from file
@@ -2235,7 +2239,8 @@ int HttpServer::run() {
       std::cerr << "SSL_CTX_add_cert_compression_alg failed." << std::endl;
       return -1;
     }
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // defined(HAVE_LIBBROTLI)
 
     if (tls::setup_keylog_callback(ssl_ctx) != 0) {
       std::cerr << "Failed to setup keylog" << std::endl;

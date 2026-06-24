@@ -36,16 +36,16 @@
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
 #  include <wolfssl/openssl/err.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
 #  include <openssl/err.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <ev.h>
 
 #ifdef HAVE_NEVERBLEED
 #  include <neverbleed.h>
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
 #include "network.h"
 #include "shrpx_config.h"
@@ -75,6 +75,9 @@ struct TLSContextData {
   // SCT data formatted so that this can be directly sent as
   // extension_data of signed_certificate_timestamp.
   std::vector<uint8_t> sct_data;
+  // cert_type is the type of certificate (e.g.,
+  // NGHTTP2_CERT_TYPE_ECDSA).
+  int cert_type;
 };
 
 // Create server side SSL_CTX
@@ -84,14 +87,14 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #ifdef HAVE_NEVERBLEED
                             ,
                             neverbleed_t *nb
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 );
 
 // Create client side SSL_CTX.  This does not configure ALPN settings.
 SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
   neverbleed_t *nb,
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
   const std::string_view &cacert, const std::string_view &cert_file,
   const std::string_view &private_key_file);
 
@@ -220,7 +223,7 @@ setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 #ifdef HAVE_NEVERBLEED
                          ,
                          neverbleed_t *nb
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 );
 
 #ifdef ENABLE_HTTP3
@@ -231,15 +234,15 @@ SSL_CTX *setup_quic_server_ssl_context(
 #  ifdef HAVE_NEVERBLEED
   ,
   neverbleed_t *nb
-#  endif // HAVE_NEVERBLEED
+#  endif // defined(HAVE_NEVERBLEED)
 );
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 // Setups client side SSL_CTX.
 SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
   neverbleed_t *nb
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 );
 
 // Sets ALPN settings in |SSL| suitable for HTTP/2 use.
@@ -314,4 +317,4 @@ int get_x509_not_after(time_t &t, X509 *x);
 
 } // namespace shrpx
 
-#endif // SHRPX_TLS_H
+#endif // !defined(SHRPX_TLS_H)
