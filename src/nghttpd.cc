@@ -24,13 +24,9 @@
  */
 #include "nghttp2_config.h"
 
-#ifdef __sgi
-#  define daemon _daemonize
-#endif
-
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #include <signal.h>
 #include <getopt.h>
 
@@ -176,6 +172,10 @@ Options:
       << config.mime_types_file << R"(
   --no-content-length
               Don't send content-length header field.
+  --groups=<GROUPS>
+              Specify the supported groups.
+              Default: )"
+      << config.groups << R"(
   --ktls      Enable ktls.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
@@ -223,6 +223,7 @@ int main(int argc, char **argv) {
       {"encoder-header-table-size", required_argument, &flag, 11},
       {"ktls", no_argument, &flag, 12},
       {"no-rfc7540-pri", no_argument, &flag, 13},
+      {"groups", required_argument, &flag, 14},
       {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "DVb:c:d:ehm:n:p:va:w:W:", long_options,
@@ -269,14 +270,14 @@ int main(int argc, char **argv) {
 #ifdef NOTHREADS
       std::cerr << "-n: WARNING: Threading disabled at build time, "
                 << "no threads created." << std::endl;
-#else
+#else  // !defined(NOTHREADS)
       auto n = util::parse_uint(optarg);
       if (!n) {
         std::cerr << "-n: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
       config.num_worker = static_cast<size_t>(*n);
-#endif // NOTHREADS
+#endif // !defined(NOTHREADS)
       break;
     }
     case 'h':
@@ -414,6 +415,10 @@ int main(int argc, char **argv) {
         std::cerr << "[WARNING]: --no-rfc7540-pri option has been deprecated."
                   << std::endl;
         break;
+      case 14:
+        // groups option
+        config.groups = optarg;
+        break;
       }
       break;
     default:
@@ -447,11 +452,7 @@ int main(int argc, char **argv) {
       std::cerr << "-d option must be specified when -D is used." << std::endl;
       exit(EXIT_FAILURE);
     }
-#ifdef __sgi
-    if (daemon(0, 0, 0, 0) == -1) {
-#else
     if (util::daemonize(0, 0) == -1) {
-#endif
       perror("daemon");
       exit(EXIT_FAILURE);
     }
@@ -479,7 +480,7 @@ int main(int argc, char **argv) {
 
   set_color_output(color || isatty(fileno(stdout)));
 
-  struct sigaction act {};
+  struct sigaction act{};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 

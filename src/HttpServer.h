@@ -36,15 +36,16 @@
 #include <vector>
 #include <unordered_map>
 #include <memory>
+#include <string_view>
 
 #include "ssl_compat.h"
 
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <ev.h>
 
@@ -70,6 +71,7 @@ struct Config {
   std::string dh_param_file;
   std::string address;
   std::string mime_types_file;
+  std::string_view groups;
   ev_tstamp stream_read_timeout;
   ev_tstamp stream_write_timeout;
   void *data_ptr;
@@ -258,4 +260,4 @@ nghttp2_ssize file_read_callback(nghttp2_session *session, int32_t stream_id,
 
 } // namespace nghttp2
 
-#endif // HTTP_SERVER_H
+#endif // !defined(HTTP_SERVER_H)

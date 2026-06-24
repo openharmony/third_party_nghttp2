@@ -29,38 +29,38 @@
 #include <sys/stat.h>
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif // HAVE_SYS_SOCKET_H
+#endif // defined(HAVE_SYS_SOCKET_H)
 #include <sys/un.h>
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
-#endif // HAVE_NETDB_H
+#endif // defined(HAVE_NETDB_H)
 #include <signal.h>
 #ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
-#endif // HAVE_NETINET_IN_H
+#endif // defined(HAVE_NETINET_IN_H)
 #ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
-#endif // HAVE_ARPA_INET_H
+#endif // defined(HAVE_ARPA_INET_H)
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #include <getopt.h>
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>
-#endif // HAVE_SYSLOG_H
+#endif // defined(HAVE_SYSLOG_H)
 #ifdef HAVE_LIMITS_H
 #  include <limits.h>
-#endif // HAVE_LIMITS_H
+#endif // defined(HAVE_LIMITS_H)
 #ifdef HAVE_SYS_TIME_H
 #  include <sys/time.h>
-#endif // HAVE_SYS_TIME_H
+#endif // defined(HAVE_SYS_TIME_H)
 #include <sys/resource.h>
 #ifdef HAVE_LIBSYSTEMD
 #  include <systemd/sd-daemon.h>
-#endif // HAVE_LIBSYSTEMD
+#endif // defined(HAVE_LIBSYSTEMD)
 #ifdef HAVE_LIBBPF
 #  include <bpf/libbpf.h>
-#endif // HAVE_LIBBPF
+#endif // defined(HAVE_LIBBPF)
 
 #include <cinttypes>
 #include <limits>
@@ -79,11 +79,11 @@
 #  include <wolfssl/openssl/ssl.h>
 #  include <wolfssl/openssl/err.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
 #  include <openssl/err.h>
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #include <ev.h>
 
 #include <nghttp2/nghttp2.h>
@@ -91,13 +91,15 @@
 #ifdef ENABLE_HTTP3
 #  include <ngtcp2/ngtcp2.h>
 #  include <nghttp3/nghttp3.h>
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#  if defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||                                \
+    defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #    include <ngtcp2/ngtcp2_crypto_quictls.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||
+         // defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_OSSL
 #    include <ngtcp2/ngtcp2_crypto_ossl.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_OSSL
-#endif   // ENABLE_HTTP3
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_OSSL)
+#endif   // defined(ENABLE_HTTP3)
 
 #include "shrpx_config.h"
 #include "shrpx_tls.h"
@@ -187,7 +189,7 @@ struct WorkerProcess {
 #ifdef ENABLE_HTTP3
                 ,
                 int quic_ipc_fd, std::vector<WorkerID> worker_ids, uint16_t seq
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
                 )
     : loop(loop),
       worker_pid(worker_pid),
@@ -197,7 +199,7 @@ struct WorkerProcess {
       quic_ipc_fd(quic_ipc_fd),
       worker_ids(std::move(worker_ids)),
       seq(seq)
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
   {
     ev_child_init(&worker_process_childev, worker_process_child_cb, worker_pid,
                   0);
@@ -212,7 +214,7 @@ struct WorkerProcess {
     if (quic_ipc_fd != -1) {
       close(quic_ipc_fd);
     }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
     if (ipc_fd != -1) {
       shutdown(ipc_fd, SHUT_WR);
@@ -229,7 +231,7 @@ struct WorkerProcess {
   int quic_ipc_fd;
   std::vector<WorkerID> worker_ids;
   uint16_t seq;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 };
 
 namespace {
@@ -241,7 +243,7 @@ std::deque<std::unique_ptr<WorkerProcess>> worker_processes;
 
 #ifdef ENABLE_HTTP3
 uint16_t worker_process_seq;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 } // namespace
 
 namespace {
@@ -368,7 +370,7 @@ int save_pid() {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   auto config = get_config();
 
-  constexpr auto SUFFIX = ".XXXXXX"sv;
+  static constexpr auto SUFFIX = ".XXXXXX"sv;
   auto &pid_file = config->pid_file;
 
   auto len = config->pid_file.size() + SUFFIX.size();
@@ -437,7 +439,7 @@ void shrpx_sd_notifyf(int unset_environment, const char *format, ...) {
   va_start(args, format);
   sd_notifyf(unset_environment, format, va_arg(args, char *));
   va_end(args);
-#endif // HAVE_LIBSYSTEMD
+#endif // defined(HAVE_LIBSYSTEMD)
 }
 } // namespace
 
@@ -564,7 +566,7 @@ void exec_binary() {
     quic_lwps.emplace_back(s);
     envp[envidx++] = const_cast<char *>(quic_lwps.back().c_str());
   }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   for (size_t i = 0; i < envlen; ++i) {
     auto env = std::string_view{environ[i]};
@@ -717,7 +719,7 @@ int create_unix_domain_server_socket(
                << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
-#else  // !SOCK_NONBLOCK
+#else  // !defined(SOCK_NONBLOCK)
   auto fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (fd == -1) {
     auto error = errno;
@@ -726,7 +728,7 @@ int create_unix_domain_server_socket(
     return -1;
   }
   util::make_socket_nonblocking(fd);
-#endif // !SOCK_NONBLOCK
+#endif // !defined(SOCK_NONBLOCK)
   int val = 1;
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
                  static_cast<socklen_t>(sizeof(val))) == -1) {
@@ -983,7 +985,7 @@ get_inherited_quic_lingering_worker_process_from_env() {
   return lwps;
 }
 } // namespace
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 namespace {
 int create_unix_domain_listener_socket(
@@ -1018,18 +1020,14 @@ int create_unix_domain_listener_socket(
 
 namespace {
 int call_daemon() {
-#ifdef __sgi
-  return _daemonize(0, 0, 0, 0);
-#else // !__sgi
-#  ifdef HAVE_LIBSYSTEMD
+#ifdef HAVE_LIBSYSTEMD
   if (sd_booted() && (getenv("NOTIFY_SOCKET") != nullptr)) {
     LOG(NOTICE) << "Daemonising disabled under systemd";
     chdir("/");
     return 0;
   }
-#  endif // HAVE_LIBSYSTEMD
+#endif // defined(HAVE_LIBSYSTEMD)
   return util::daemonize(0, 0);
-#endif   // !__sgi
 }
 } // namespace
 
@@ -1153,7 +1151,7 @@ collect_quic_lingering_worker_processes() {
   return quic_lwps;
 }
 } // namespace
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 namespace {
 ev_signal reopen_log_signalev;
@@ -1289,14 +1287,14 @@ pid_t fork_worker_process(int &main_ipc_fd
 #ifdef ENABLE_HTTP3
                           ,
                           int &wp_quic_ipc_fd
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
                           ,
                           const std::vector<InheritedUNIXDomainAddr> &iaddrs
 #ifdef ENABLE_HTTP3
                           ,
                           std::vector<WorkerID> worker_ids,
                           std::vector<QUICLingeringWorkerProcess> quic_lwps
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 ) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   int rv;
@@ -1316,7 +1314,7 @@ pid_t fork_worker_process(int &main_ipc_fd
   if (rv != 0) {
     return -1;
   }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   rv = shrpx_signal_block_all(&oldset);
   if (rv != 0) {
@@ -1362,7 +1360,7 @@ pid_t fork_worker_process(int &main_ipc_fd
       // Do not close quic_ipc_fd.
       wp->quic_ipc_fd = -1;
     }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
     if (!config->single_process) {
       close(worker_process_ready_ipc_fd[0]);
@@ -1396,7 +1394,7 @@ pid_t fork_worker_process(int &main_ipc_fd
       close(ipc_fd[1]);
 #ifdef ENABLE_HTTP3
       close(quic_ipc_fd[1]);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
     }
 
     WorkerProcessConfig wpconf{
@@ -1406,7 +1404,7 @@ pid_t fork_worker_process(int &main_ipc_fd
       .worker_ids = std::move(worker_ids),
       .quic_ipc_fd = quic_ipc_fd[0],
       .quic_lingering_worker_processes = std::move(quic_lwps),
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
     };
     rv = worker_process_event_loop(&wpconf);
     if (rv != 0) {
@@ -1451,7 +1449,7 @@ pid_t fork_worker_process(int &main_ipc_fd
 #ifdef ENABLE_HTTP3
     close(quic_ipc_fd[0]);
     close(quic_ipc_fd[1]);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
     return -1;
   }
@@ -1459,7 +1457,7 @@ pid_t fork_worker_process(int &main_ipc_fd
   close(ipc_fd[0]);
 #ifdef ENABLE_HTTP3
   close(quic_ipc_fd[0]);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   main_ipc_fd = ipc_fd[1];
 #ifdef ENABLE_HTTP3
@@ -1664,7 +1662,7 @@ void fill_default_config(Config *config) {
   tlsconf.max_proto_version =
     tls::proto_version_from_string(DEFAULT_TLS_MAX_PROTO_VERSION);
   tlsconf.max_early_data = 16_k;
-  tlsconf.ecdh_curves = "X25519:P-256:P-384:P-521"sv;
+  tlsconf.groups = "X25519:P-256:P-384:P-521"sv;
 
   auto &httpconf = config->http;
   httpconf.server_name = "nghttpx"sv;
@@ -2403,39 +2401,39 @@ SSL/TLS:
   --ciphers=<SUITE>
               Set allowed  cipher list  for frontend  connection.  The
               format of the string is described in OpenSSL ciphers(1).
-              This option  sets cipher suites for  TLSv1.2 or earlier.
-              Use --tls13-ciphers for TLSv1.3.
+              This  option  sets  cipher   suites  for  TLSv1.2.   Use
+              --tls13-ciphers for TLSv1.3.
               Default: )"
       << config->tls.ciphers << R"(
   --tls13-ciphers=<SUITE>
               Set allowed  cipher list  for frontend  connection.  The
               format of the string is described in OpenSSL ciphers(1).
               This  option  sets  cipher   suites  for  TLSv1.3.   Use
-              --ciphers for TLSv1.2 or earlier.
+              --ciphers for TLSv1.2.
               Default: )"
       << config->tls.tls13_ciphers << R"(
   --client-ciphers=<SUITE>
               Set  allowed cipher  list for  backend connection.   The
               format of the string is described in OpenSSL ciphers(1).
-              This option  sets cipher suites for  TLSv1.2 or earlier.
-              Use --tls13-client-ciphers for TLSv1.3.
+              This  option  sets  cipher   suites  for  TLSv1.2.   Use
+              --tls13-client-ciphers for TLSv1.3.
               Default: )"
       << config->tls.client.ciphers << R"(
   --tls13-client-ciphers=<SUITE>
               Set  allowed cipher  list for  backend connection.   The
               format of the string is described in OpenSSL ciphers(1).
               This  option  sets  cipher   suites  for  TLSv1.3.   Use
-              --tls13-client-ciphers for TLSv1.2 or earlier.
+              --client-ciphers for TLSv1.2.
               Default: )"
       << config->tls.client.tls13_ciphers << R"(
-  --ecdh-curves=<LIST>
-              Set  supported  curve  list  for  frontend  connections.
-              <LIST> is a  colon separated list of curve  NID or names
+  --groups=<LIST>
+              Set the  supported group list for  frontend connections.
+              <LIST> is a  colon separated list of group  NID or names
               in the preference order.  The supported curves depend on
               the  linked  OpenSSL  library.  This  function  requires
               OpenSSL >= 1.0.2.
               Default: )"
-      << config->tls.ecdh_curves << R"(
+      << config->tls.groups << R"(
   -k, --insecure
               Don't  verify backend  server's  certificate  if TLS  is
               enabled for backend connections.
@@ -2454,12 +2452,12 @@ SSL/TLS:
               Specify  additional certificate  and  private key  file.
               nghttpx will  choose certificates based on  the hostname
               indicated by client using TLS SNI extension.  If nghttpx
-              is  built with  OpenSSL  >= 1.0.2,  the shared  elliptic
-              curves (e.g., P-256) between  client and server are also
-              taken into  consideration.  This allows nghttpx  to send
-              ECDSA certificate  to modern clients, while  sending RSA
-              based certificate to older  clients.  This option can be
-              used  multiple  times.
+              is built with OpenSSL >= 1.0.2, the signature algorithms
+              (e.g., ECDSA+SHA256) presented by  client are also taken
+              into consideration.  This allows  nghttpx to send ML-DSA
+              or ECDSA  certificate to  modern clients,  while sending
+              RSA based certificate to older clients.  This option can
+              be used multiple times.
 
               Additional parameter  can be specified in  <PARAM>.  The
               available <PARAM> is "sct-dir=<DIR>".
@@ -2505,16 +2503,12 @@ SSL/TLS:
               --tls-min-proto-version and  --tls-max-proto-version are
               enabled.  If the protocol list advertised by client does
               not  overlap  this range,  you  will  receive the  error
-              message "unknown protocol".  If a protocol version lower
-              than TLSv1.2 is specified, make sure that the compatible
-              ciphers are  included in --ciphers option.   The default
-              cipher  list  only   includes  ciphers  compatible  with
-              TLSv1.2 or above.  The available versions are:
+              message "unknown protocol".  The available versions are:
               )"
 #ifdef TLS1_3_VERSION
-         "TLSv1.3, "
+         "TLSv1.3 and "
 #endif // TLS1_3_VERSION
-         "TLSv1.2, TLSv1.1, and TLSv1.0"
+         "TLSv1.2"
          R"(
               Default: )"
       << DEFAULT_TLS_MIN_PROTO_VERSION
@@ -2528,9 +2522,9 @@ SSL/TLS:
               message "unknown protocol".  The available versions are:
               )"
 #ifdef TLS1_3_VERSION
-         "TLSv1.3, "
+         "TLSv1.3 and "
 #endif // TLS1_3_VERSION
-         "TLSv1.2, TLSv1.1, and TLSv1.0"
+         "TLSv1.2"
          R"(
               Default: )"
       << DEFAULT_TLS_MAX_PROTO_VERSION << R"(
@@ -3415,12 +3409,12 @@ int process_options(
   auto &upstreamconf = config->conn.upstream;
 
   if (listenerconf.addrs.empty()) {
-    UpstreamAddr addr{};
-    addr.host = "*"sv;
-    addr.port = 3000;
-    addr.tls = true;
-    addr.family = AF_INET;
-    addr.index = 0;
+    UpstreamAddr addr{
+      .host = "*"sv,
+      .port = 3000,
+      .family = AF_INET,
+      .tls = true,
+    };
     listenerconf.addrs.push_back(addr);
     addr.family = AF_INET6;
     addr.index = 1;
@@ -3976,6 +3970,7 @@ int main(int argc, char **argv) {
        195},
       {SHRPX_OPT_FRONTEND_HTTP3_IDLE_TIMEOUT.data(), required_argument, &flag,
        196},
+      {SHRPX_OPT_GROUPS.data(), required_argument, &flag, 197},
       {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4901,6 +4896,10 @@ int main(int argc, char **argv) {
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_IDLE_TIMEOUT,
                              std::string_view{optarg});
         break;
+      case 197:
+        // --groups
+        cmdcfgs.emplace_back(SHRPX_OPT_GROUPS, std::string_view{optarg});
+        break;
       default:
         break;
       }
@@ -4918,12 +4917,14 @@ int main(int argc, char **argv) {
   }
 
 #ifdef ENABLE_HTTP3
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#  if defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||                                \
+    defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
   if (ngtcp2_crypto_quictls_init() != 0) {
     LOG(FATAL) << "ngtcp2_crypto_quictls_init failed";
     exit(EXIT_FAILURE);
   }
-#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS)
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||
+         // defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_OSSL
   if (ngtcp2_crypto_ossl_init() != 0) {
     LOG(FATAL) << "ngtcp2_crypto_ossl_init failed";
