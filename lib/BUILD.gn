@@ -114,6 +114,7 @@ if (defined(ohos_lite)) {
   import("//build/ohos.gni")
 
   ohos_static_library("nghttp2") {
+    branch_protector_ret = "pac_ret"
     include_dirs = [ "includes" ]
     license_file = "//third_party/nghttp2/COPYING"
     defines = []
@@ -127,6 +128,7 @@ if (defined(ohos_lite)) {
   }
 
   ohos_static_library("libllhttp") {
+    branch_protector_ret = "pac_ret"
     sources = llhttp_sources
     public_configs = [ ":llhttp_public_config" ]
   }
