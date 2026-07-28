@@ -143,6 +143,7 @@ if (defined(ohos_lite)) {
   }
 
   ohos_shared_library("libnghttp2_shared") {
+    branch_protector_ret = "pac_ret"
     include_dirs = [ "includes" ]
     license_file = "//third_party/nghttp2/COPYING"
     public_configs = [ ":libnghttp2_shared_config_public" ]
